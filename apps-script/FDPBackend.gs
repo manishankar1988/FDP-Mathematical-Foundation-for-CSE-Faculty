@@ -27,6 +27,9 @@
  */
 
 const ADMIN_KEY = "change-this-key";
+// Only needed if this script was NOT created from the Sheet's Extensions → Apps Script menu (a "standalone" script).
+// Paste the Sheet's ID here: the long text between /d/ and /edit in the Sheet's address bar.
+const SHEET_ID = "";
 
 const COLS = {
   Quizzes:   ["id", "title", "description", "open", "timeLimit", "showScore", "showReview", "oneAttempt", "shuffle", "passPercent", "opensAt", "closesAt"],
@@ -42,7 +45,7 @@ const LETTERS = "ABCDEF";
 
 /* ---------------- sheet helpers ---------------- */
 function sheet_(name) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = SHEET_ID ? SpreadsheetApp.openById(SHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
   let sh = ss.getSheetByName(name);
   if (!sh) {
     sh = ss.insertSheet(name);
@@ -303,7 +306,7 @@ function adminContent_(d) {
   }
   if (d.action === "adminContentSave") {
     const it = d.item || {};
-    if (!it.id || !it.type || !["video", "material", "note", "pin", "topic"].includes(it.type)) return { error: "Unknown content type." };
+    if (!it.id || !it.type || !["video", "material", "note", "pin", "topic", "day", "quiz", "poll"].includes(it.type)) return { error: "Unknown content type." };
     if (it.type !== "pin" && !String(it.title || "").trim()) return { error: "Give it a title." };
     if (/^\s*(javascript|data):/i.test(String(it.url || ""))) return { error: "That link is not allowed." };
     const row = cols.map(c => c === "extra" ? JSON.stringify(it.extra || {}) : (it[c] === undefined || it[c] === null ? "" : it[c]));

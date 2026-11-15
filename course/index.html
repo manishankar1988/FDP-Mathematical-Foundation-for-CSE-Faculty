@@ -1108,7 +1108,7 @@ Two replicas, each 99% available, in parallel: $1 - 0.01^2 = 99.99\%$.</div>
    SETTINGS — change these before hosting
    ===================================================================== */
 const CONFIG = {
-  SHEET_URL: "",        // Google Apps Script web-app URL (see apps-script/Code.gs). Empty = scores stay in this browser only.
+  SHEET_URL: "https://script.google.com/macros/s/AKfycbyCqh_R7I8jr4ZK_W2NMLWRKk0xU4ufNYfuLMhISPHfcgbtUG_T1TUoEJIYZeStAKC9bA/exec",        // Google Apps Script web-app URL (see apps-script/Code.gs). Empty = scores stay in this browser only.
   ADMIN_PIN: "2026",    // PIN for the coordinator view
   PASS_PERCENT: 60,     // pass mark for a day quiz
   LOCK_QUIZ_UNTIL_POLLS_DONE: true  // the day quiz opens only after every topic poll that day is answered
@@ -1146,6 +1146,7 @@ function fetchTally(pollId){
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
 const DAYS = COURSE.days;
+const GROUPS = [{ week:1, rail:"Week 1 · Common basis", home:"Week 1 · The common mathematical basis (B1–B6)" }, { week:2, rail:"Week 2 · Course-specific", home:"Week 2 · Specialised mathematics per course" }];
 const dayById = id => DAYS.find(d => d.id === id);
 function toast(msg){ const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 2600); }
 function math(el){
@@ -1159,7 +1160,7 @@ function bestAttempt(d){
   const a = U().attempts.filter(x => x.day === d.id);
   return a.length ? a.reduce((m, x) => x.pct > m.pct ? x : m) : null;
 }
-function dayComplete(d){ const b = bestAttempt(d); return dayTopicsDone(d) === d.topics.length && b && b.pct >= CONFIG.PASS_PERCENT; }
+function dayComplete(d){ const b = bestAttempt(d); return (d.topics.length || d.quiz.length) && dayTopicsDone(d) === d.topics.length && (!d.quiz.length || (b && b.pct >= CONFIG.PASS_PERCENT)); }
 function ytId(input){
   const s = String(input).trim();
   const m = s.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([A-Za-z0-9_-]{11})/);
@@ -1181,8 +1182,8 @@ function renderWho(){
 function renderRail(){
   const cur = currentDay();
   let html = "";
-  [1, 2].forEach(wk => {
-    html += `<h3 class="eyebrow">Week ${wk} · ${wk === 1 ? "Common basis" : "Course-specific"}</h3>`;
+  GROUPS.concat(Extras.extraGroup()).forEach(g => { const wk = g.week;
+    html += `<h3 class="eyebrow">${esc(g.rail)}</h3>`;
     DAYS.filter(d => d.week === wk).forEach(d => {
       const b = bestAttempt(d);
       html += `<a class="daylink ${cur === d.id ? "active" : ""} ${dayComplete(d) ? "done" : ""}" href="#day-${d.id}">
@@ -1223,18 +1224,18 @@ function viewHome(){
       <p style="margin-top:14px"><a class="btn primary" href="#day-${next.id}">${topicsDone ? "Continue" : "Start"} with Day ${next.id}: ${esc(next.title)}</a></p></div>
     <div class="stats">
       <div class="stat"><b>${topicsDone}/${topicsAll}</b><span>topics done</span></div>
-      <div class="stat"><b>${passed}/12</b><span>quizzes passed</span></div>
+      <div class="stat"><b>${passed}/${DAYS.length}</b><span>quizzes passed</span></div>
       <div class="stat"><b>${U().attempts.length}</b><span>quiz attempts</span></div>
     </div></section>`;
-  [1, 2].forEach(wk => {
-    html += `<section><div class="eyebrow" style="margin-bottom:10px">Week ${wk} · ${wk === 1 ? "The common mathematical basis (B1–B6)" : "Specialised mathematics per course"}</div><div class="weekgrid">`;
+  GROUPS.concat(Extras.extraGroup()).forEach(g => { const wk = g.week;
+    html += `<section><div class="eyebrow" style="margin-bottom:10px">${esc(g.home)}</div><div class="weekgrid">`;
     DAYS.filter(d => d.week === wk).forEach(d => {
       const done = dayTopicsDone(d), b = bestAttempt(d);
       html += `<a class="daycard" href="#day-${d.id}">
         <span class="eyebrow">Day ${d.id} · ${esc(d.code)}</span>
         <h3>${esc(d.title)}</h3>
         <p>${esc(d.lands)}</p>
-        <div class="bar"><i style="width:${Math.round(done / d.topics.length * 100)}%"></i></div>
+        <div class="bar"><i style="width:${(d.topics.length ? Math.round(done / d.topics.length * 100) : 0)}%"></i></div>
         <div class="cardfoot"><span>${done}/${d.topics.length} topics</span><span class="best">${b ? "Best " + b.score + "/" + b.total : "Quiz not taken"}</span></div></a>`;
     });
     html += `</div></section>`;
@@ -1253,7 +1254,7 @@ function stepsBar(d, activeIdx, quizActive){
   return s;
 }
 function dayHead(d){
-  return `<header class="dayhead"><div class="eyebrow">Week ${d.week} · Day ${d.id} · ${esc(d.code)}</div>
+  return `<header class="dayhead"><div class="eyebrow">${d.extraDay ? "Added day" : "Week " + d.week} · Day ${d.id} · ${esc(d.code)}</div>
     <h1>${esc(d.title)}</h1><div class="lands">Feeds: ${esc(d.lands)}</div></header>`;
 }
 function videoBlock(t){
@@ -1279,6 +1280,10 @@ function videoBlock(t){
 }
 function viewDay(d, idx){
   if(!d) return go("#home");
+  if(!d.topics.length){
+    $("#view").innerHTML = dayHead(d) + stepsBar(d, -1, false) + Extras.dayBlock(d) + `<div class="panel"><h3>Nothing here yet</h3><p>Your coordinator has not added topics for this day yet. Check back soon.</p>${d.quiz.length ? `<p><a class="btn primary" href="#day-${d.id}-quiz">Go to the Day ${d.id} quiz →</a></p>` : ""}</div>`;
+    Extras.afterRender(); return;
+  }
   idx = Math.max(0, Math.min(idx || 0, d.topics.length - 1));
   const t = d.topics[idx];
   const vote = U().polls[t.id];
@@ -1324,7 +1329,7 @@ function renderPoll(t, remote){
   }).join("");
   $("#pollnote").textContent = vote === undefined ? "Pick one option. You can change your vote later."
     : remote ? `${total} votes from all faculty so far.` : CONFIG.SHEET_URL ? "Loading results from all faculty…" : `${total} vote${total === 1 ? "" : "s"} on this computer. Connect the Google Sheet to see everyone's votes.`;
-  document.querySelectorAll(".opt").forEach(b => b.onclick = () => {
+  document.querySelectorAll("#opts .opt").forEach(b => b.onclick = () => {
     const i = +b.dataset.i, prev = U().polls[t.id];
     U().polls[t.id] = i; save();
     send({ type:"poll", poll:t.id, topic:t.title, option:i, optionText:t.poll.opts[i], previous: prev === undefined ? "" : prev, name:S.user.name, emp:S.user.emp, dept:S.user.dept, time:new Date().toISOString() });
@@ -1340,6 +1345,9 @@ function viewQuiz(d){
   const missing = d.topics.filter(t => !topicDone(t));
   const attempts = U().attempts.filter(a => a.day === d.id);
   let html = dayHead(d) + stepsBar(d, -1, true);
+  if(!d.quiz.length){
+    $("#view").innerHTML = html + `<div class="panel"><h3>No quiz for this day yet</h3><p>Your coordinator has not added quiz questions for Day ${d.id}. Check back soon.</p></div>`; return;
+  }
   if(CONFIG.LOCK_QUIZ_UNTIL_POLLS_DONE && missing.length){
     html += `<div class="locked"><h3>The Day ${d.id} quiz opens once every topic is finished</h3>
       <p class="attempts">Answer the poll at the end of these topics first:</p>
@@ -1387,7 +1395,7 @@ function gradeQuiz(d, answers){
     <h3 style="margin:6px 0 4px">${pct}% on attempt ${attemptNo}</h3>
     <p class="attempts" id="saveNote">Saved on this computer${CONFIG.SHEET_URL ? "; sending to the coordinator's sheet…" : "."}</p>
     <div class="row" style="margin-top:8px"><a class="btn" href="#day-${d.id}-quiz" id="retake">Retake</a>
-    ${d.id < 12 ? `<a class="btn primary" href="#day-${d.id + 1}">Day ${d.id + 1}: ${esc(dayById(d.id + 1).title)} →</a>` : `<a class="btn primary" href="#home">Back to overview</a>`}</div></div></div>`;
+    ${DAYS[DAYS.indexOf(d) + 1] ? `<a class="btn primary" href="#day-${DAYS[DAYS.indexOf(d) + 1].id}">Day ${DAYS[DAYS.indexOf(d) + 1].id}: ${esc(DAYS[DAYS.indexOf(d) + 1].title)} →</a>` : `<a class="btn primary" href="#home">Back to overview</a>`}</div></div></div>`;
   $("#retake").onclick = e => { e.preventDefault(); viewQuiz(d); window.scrollTo(0, 0); };
   send(rec).then(ok => { const n = $("#saveNote"); if(n && CONFIG.SHEET_URL) n.textContent = ok ? "Saved on this computer and sent to the coordinator's sheet." : "Saved on this computer. Could not reach the coordinator's sheet; ask the coordinator to collect the CSV."; });
   renderRail(); renderWho();
@@ -1423,7 +1431,7 @@ function viewAdmin(){
   if(!plist.length) html += `<tr><td colspan="${DAYS.length + 4}" style="color:var(--muted)">No quiz attempts recorded on this computer yet. They appear here as soon as someone submits a day quiz.</td></tr>`;
   plist.sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
     let tot = 0, pass = 0;
-    html += `<tr><td>${esc(p.name)}</td><td class="mono">${esc(p.emp)}</td>` + DAYS.map(d => { const r = p.best[d.id]; if(!r) return `<td class="num">–</td>`; tot += r.score; if(r.passed) pass++; return `<td class="num">${r.score}</td>`; }).join("") + `<td class="num">${tot}</td><td class="num">${pass}/12</td></tr>`;
+    html += `<tr><td>${esc(p.name)}</td><td class="mono">${esc(p.emp)}</td>` + DAYS.map(d => { const r = p.best[d.id]; if(!r) return `<td class="num">–</td>`; tot += r.score; if(r.passed) pass++; return `<td class="num">${r.score}</td>`; }).join("") + `<td class="num">${tot}</td><td class="num">${pass}/${DAYS.length}</td></tr>`;
   });
   html += `</tbody></table></div></section>
     <section><div class="eyebrow" style="margin-bottom:8px">Poll results on this computer</div><div class="tablewrap"><table class="data"><thead><tr><th>Day</th><th>Topic poll</th><th>Leading answer</th><th>Votes</th></tr></thead><tbody>`;

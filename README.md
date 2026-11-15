@@ -62,6 +62,9 @@ All three pages share **one** script and **one** Google Sheet: `apps-script/FDPB
 
 **Videos, materials, notes and new topics** (`.../course/#admin` and `.../linear-algebra/#admin`, PIN, then *Add content for participants*)
 - **Extra video**, **Material or link** (PDF, slides, Drive folder, website), **Note or announcement**: attach to one topic or to a whole day.
+- **A whole new day**: give it a number (after the last existing day), a title and a short description. It appears on the home page and side menu under "Added by your coordinator". Then add topics and quiz questions to it.
+- **Quiz questions for a day**: type or paste questions as plain text (question, options `A) B) C)…`, then `Answer: B`, optional `Explanation: …`; a blank line between questions). They are added to the day's quiz, or tick *Replace* to use only yours.
+- **A poll** on a day or a topic: a question and 2 to 6 options. Everyone can vote and see the results; a poll does not lock the quiz. Results per option are shown in the coordinator list.
 - **Replace the main video** of a topic for everyone (also available on each topic page while in coordinator view).
 - **A whole new topic** at the end of a day, with video, reading notes and its own poll.
 - Every item can be published/hidden, shown from a date and hidden after a date. Items can be edited or deleted later.

@@ -479,7 +479,7 @@ with orthonormal columns in $U$ and $V$ and singular values $\sigma_1 \ge \sigma
    SETTINGS — change these before hosting
    ===================================================================== */
 const CONFIG = {
-  SHEET_URL: "",        // Google Apps Script web-app URL (see apps-script/Code.gs). Empty = scores stay in this browser only.
+  SHEET_URL: "https://script.google.com/macros/s/AKfycbyCqh_R7I8jr4ZK_W2NMLWRKk0xU4ufNYfuLMhISPHfcgbtUG_T1TUoEJIYZeStAKC9bA/exec",        // Google Apps Script web-app URL (see apps-script/Code.gs). Empty = scores stay in this browser only.
   ADMIN_PIN: "2026",    // PIN for the coordinator view
   PASS_PERCENT: 60,     // pass mark for a day quiz
   LOCK_QUIZ_UNTIL_POLLS_DONE: true  // the day quiz opens only after every topic poll that day is answered
@@ -530,7 +530,7 @@ function bestAttempt(d){
   const a = U().attempts.filter(x => x.day === d.id);
   return a.length ? a.reduce((m, x) => x.pct > m.pct ? x : m) : null;
 }
-function dayComplete(d){ const b = bestAttempt(d); return dayTopicsDone(d) === d.topics.length && b && b.pct >= CONFIG.PASS_PERCENT; }
+function dayComplete(d){ const b = bestAttempt(d); return (d.topics.length || d.quiz.length) && dayTopicsDone(d) === d.topics.length && (!d.quiz.length || (b && b.pct >= CONFIG.PASS_PERCENT)); }
 function ytId(input){
   const s = String(input).trim();
   const m = s.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([A-Za-z0-9_-]{11})/);
@@ -552,7 +552,7 @@ function renderWho(){
 function renderRail(){
   const cur = currentDay();
   let html = "";
-  COURSE.groups.forEach(g => { const wk = g.week;
+  COURSE.groups.concat(Extras.extraGroup()).forEach(g => { const wk = g.week;
     html += `<h3 class="eyebrow">${esc(g.rail)}</h3>`;
     DAYS.filter(d => d.week === wk).forEach(d => {
       const b = bestAttempt(d);
@@ -597,7 +597,7 @@ function viewHome(){
       <div class="stat"><b>${passed}/${DAYS.length}</b><span>quizzes passed</span></div>
       <div class="stat"><b>${U().attempts.length}</b><span>quiz attempts</span></div>
     </div></section>`;
-  COURSE.groups.forEach(g => { const wk = g.week;
+  COURSE.groups.concat(Extras.extraGroup()).forEach(g => { const wk = g.week;
     html += `<section><div class="eyebrow" style="margin-bottom:10px">${esc(g.home)}</div><div class="weekgrid">`;
     DAYS.filter(d => d.week === wk).forEach(d => {
       const done = dayTopicsDone(d), b = bestAttempt(d);
@@ -605,7 +605,7 @@ function viewHome(){
         <span class="eyebrow">Day ${d.id} · ${esc(d.code)}</span>
         <h3>${esc(d.title)}</h3>
         <p>${esc(d.lands)}</p>
-        <div class="bar"><i style="width:${Math.round(done / d.topics.length * 100)}%"></i></div>
+        <div class="bar"><i style="width:${(d.topics.length ? Math.round(done / d.topics.length * 100) : 0)}%"></i></div>
         <div class="cardfoot"><span>${done}/${d.topics.length} topics</span><span class="best">${b ? "Best " + b.score + "/" + b.total : "Quiz not taken"}</span></div></a>`;
     });
     html += `</div></section>`;
@@ -624,7 +624,7 @@ function stepsBar(d, activeIdx, quizActive){
   return s;
 }
 function dayHead(d){
-  return `<header class="dayhead"><div class="eyebrow">Day ${d.id} · ${esc(d.code)}</div>
+  return `<header class="dayhead"><div class="eyebrow">${d.extraDay ? "Added day" : "Day"} ${d.id} · ${esc(d.code)}</div>
     <h1>${esc(d.title)}</h1><div class="lands">Feeds: ${esc(d.lands)}</div></header>`;
 }
 function videoBlock(t){
@@ -650,6 +650,10 @@ function videoBlock(t){
 }
 function viewDay(d, idx){
   if(!d) return go("#home");
+  if(!d.topics.length){
+    $("#view").innerHTML = dayHead(d) + stepsBar(d, -1, false) + Extras.dayBlock(d) + `<div class="panel"><h3>Nothing here yet</h3><p>Your coordinator has not added topics for this day yet. Check back soon.</p>${d.quiz.length ? `<p><a class="btn primary" href="#day-${d.id}-quiz">Go to the Day ${d.id} quiz →</a></p>` : ""}</div>`;
+    Extras.afterRender(); return;
+  }
   idx = Math.max(0, Math.min(idx || 0, d.topics.length - 1));
   const t = d.topics[idx];
   const vote = U().polls[t.id];
@@ -695,7 +699,7 @@ function renderPoll(t, remote){
   }).join("");
   $("#pollnote").textContent = vote === undefined ? "Pick one option. You can change your vote later."
     : remote ? `${total} votes from all faculty so far.` : CONFIG.SHEET_URL ? "Loading results from all faculty…" : `${total} vote${total === 1 ? "" : "s"} on this computer. Connect the Google Sheet to see everyone's votes.`;
-  document.querySelectorAll(".opt").forEach(b => b.onclick = () => {
+  document.querySelectorAll("#opts .opt").forEach(b => b.onclick = () => {
     const i = +b.dataset.i, prev = U().polls[t.id];
     U().polls[t.id] = i; save();
     send({ type:"poll", poll:t.id, topic:t.title, option:i, optionText:t.poll.opts[i], previous: prev === undefined ? "" : prev, name:S.user.name, emp:S.user.emp, dept:S.user.dept, time:new Date().toISOString() });
@@ -711,6 +715,9 @@ function viewQuiz(d){
   const missing = d.topics.filter(t => !topicDone(t));
   const attempts = U().attempts.filter(a => a.day === d.id);
   let html = dayHead(d) + stepsBar(d, -1, true);
+  if(!d.quiz.length){
+    $("#view").innerHTML = html + `<div class="panel"><h3>No quiz for this day yet</h3><p>Your coordinator has not added quiz questions for Day ${d.id}. Check back soon.</p></div>`; return;
+  }
   if(CONFIG.LOCK_QUIZ_UNTIL_POLLS_DONE && missing.length){
     html += `<div class="locked"><h3>The Day ${d.id} quiz opens once every topic is finished</h3>
       <p class="attempts">Answer the poll at the end of these topics first:</p>
