@@ -473,6 +473,7 @@ with orthonormal columns in $U$ and $V$ and singular values $\sigma_1 \ge \sigma
 };
 
 </script>
+<script src="../shared/extras.js"></script>
 <script>
 /* =====================================================================
    SETTINGS — change these before hosting
@@ -568,6 +569,7 @@ function renderRail(){
 function currentDay(){ const m = location.hash.match(/^#day-(\d+)/); return m ? +m[1] : null; }
 function route(){
   const h = location.hash || "#home";
+  Extras.apply(); Extras.refreshIfStale(route);
   renderWho(); renderRail();
   let m;
   if(h === "#admin") return viewAdmin();
@@ -626,7 +628,7 @@ function dayHead(d){
     <h1>${esc(d.title)}</h1><div class="lands">Feeds: ${esc(d.lands)}</div></header>`;
 }
 function videoBlock(t){
-  const ov = S.overrides[t.id];
+  const ov = Extras.pinFor(t.id) || S.overrides[t.id];
   const id = ov || (t.video && t.video.yt);
   const isAdmin = sessionStorage.getItem("fmb:admin") === "1";
   const overrideUI = isAdmin ? `<div class="override" style="padding:0 16px 12px">
@@ -651,10 +653,11 @@ function viewDay(d, idx){
   idx = Math.max(0, Math.min(idx || 0, d.topics.length - 1));
   const t = d.topics[idx];
   const vote = U().polls[t.id];
-  let html = dayHead(d) + stepsBar(d, idx, false) + `<article class="topic">
+  let html = dayHead(d) + stepsBar(d, idx, false) + Extras.dayBlock(d) + `<article class="topic">
     <div><div class="eyebrow">Topic ${idx + 1} of ${d.topics.length}</div><h2>${esc(t.title)}</h2></div>
     <section class="phase"><header><span class="n">1</span><h3>Watch</h3><span class="right">${U().watched[t.id] ? "Watched" : "Lecture video"}</span></header>${videoBlock(t)}</section>
     <section class="phase"><header><span class="n">2</span><h3>Read</h3><span class="right">Study material</span></header><div class="body"><div class="notes" id="notes">${t.notes}</div></div></section>
+    ${Extras.topicBlock(t)}
     <section class="phase"><header><span class="n">3</span><h3>Vote</h3><span class="right">${vote !== undefined ? "Your vote is recorded" : "Poll"}</span></header>
       <div class="body poll"><h4>${esc(t.poll.q)}</h4><div class="opts" id="opts"></div><div class="pollnote" id="pollnote"></div></div></section>
     <div class="navrow">
@@ -662,15 +665,17 @@ function viewDay(d, idx){
       ${idx < d.topics.length - 1 ? `<a class="btn primary" href="#day-${d.id}-t${idx + 2}">Next: ${esc(d.topics[idx + 1].title)} →</a>` : `<a class="btn primary" href="#day-${d.id}-quiz">Go to the Day ${d.id} quiz →</a>`}
     </div></article>`;
   $("#view").innerHTML = html;
-  math($("#notes"));
+  math($("#notes")); Extras.afterRender();
   const mw = $("#markWatched");
   if(mw) mw.onclick = () => { U().watched[t.id] = Date.now(); save(); mw.textContent = "Watched ✓"; };
-  document.querySelectorAll("[data-ov]").forEach(b => b.onclick = () => {
+  document.querySelectorAll("[data-ov]").forEach(b => b.onclick = async () => {
     const v = ytId($("#ov-" + b.dataset.ov).value);
     if(!v){ toast("That doesn't look like a YouTube link."); return; }
-    S.overrides[b.dataset.ov] = v; save(); toast("Video pinned on this browser."); route();
+    if(await Extras.pinVideo(b.dataset.ov, d.id, v)){ delete S.overrides[b.dataset.ov]; save(); toast("Video replaced for everyone."); route(); }
   });
-  document.querySelectorAll("[data-ovclear]").forEach(b => b.onclick = () => { delete S.overrides[b.dataset.ovclear]; save(); route(); });
+  document.querySelectorAll("[data-ovclear]").forEach(b => b.onclick = async () => {
+    if(await Extras.unpinVideo(b.dataset.ovclear)){ delete S.overrides[b.dataset.ovclear]; save(); route(); }
+  });
   renderPoll(t);
 }
 function localTally(t){
@@ -777,7 +782,8 @@ function viewAdmin(){
   recs.forEach(r => { const p = people[r.emp] = people[r.emp] || { name:r.name, emp:r.emp, dept:r.dept, best:{} };
     if(!p.best[r.day] || r.score > p.best[r.day].score) p.best[r.day] = r; });
   const plist = Object.values(people);
-  let html = `<header class="dayhead"><div class="eyebrow">Coordinator view</div><h1>Scores and polls</h1></header>
+  let html = `<header class="dayhead"><div class="eyebrow">Coordinator view</div><h1>Content, scores and polls</h1></header>
+    ${Extras.adminPanel()}
     <div class="panel"><h3>Score recording</h3>
       <p class="status ${CONFIG.SHEET_URL ? "ok" : "off"}">${CONFIG.SHEET_URL ? "Connected to Google Sheets: every quiz attempt and poll vote is also sent to the sheet." : "Not connected to Google Sheets. Scores below are only those taken on this computer. Set SHEET_URL in the file to collect everyone's scores in one place."}</p>
       <div class="row"><button class="btn primary" id="csvBest">Download best scores (CSV)</button><button class="btn" id="csvAll">Download all attempts (CSV)</button>
@@ -796,10 +802,9 @@ function viewAdmin(){
     const c = localTally(t), tot = c.reduce((a, b) => a + b, 0), top = c.indexOf(Math.max(...c));
     html += `<tr><td class="mono">D${d.id}</td><td>${esc(t.poll.q)}</td><td>${tot ? esc(t.poll.opts[top]) + " (" + Math.round(c[top] / tot * 100) + "%)" : "–"}</td><td class="num">${tot}</td></tr>`;
   }));
-  html += `</tbody></table></div></section>
-    <div class="panel"><h3>Pinned videos</h3><p>Open any topic while in coordinator view to paste a different YouTube link. Pins are saved in this browser; to make one permanent for everyone, copy the list below into the <code>yt</code> field of that topic in the file.</p>
-    <pre class="mono" style="margin:0;white-space:pre-wrap;font-size:12.5px">${Object.keys(S.overrides).length ? esc(JSON.stringify(S.overrides, null, 2)) : "No videos pinned yet."}</pre></div>`;
+  html += `</tbody></table></div></section>`;
   $("#view").innerHTML = html;
+  Extras.bindAdmin();
   $("#csvBest").onclick = () => downloadCSV("best-scores.csv", ["Name","Emp ID","Dept", ...DAYS.map(d => "Day " + d.id), "Total", "Days passed"],
     plist.map(p => { let tot = 0, pass = 0; const cells = DAYS.map(d => { const r = p.best[d.id]; if(!r) return ""; tot += r.score; if(r.passed) pass++; return r.score; }); return [p.name, p.emp, p.dept, ...cells, tot, pass]; }));
   $("#csvAll").onclick = () => downloadCSV("all-attempts.csv", ["Time","Name","Emp ID","Dept","Courses","Day","Day title","Attempt","Score","Total","Percent","Passed","Answers"],
@@ -837,8 +842,10 @@ $("#loginForm").onsubmit = e => {
 document.title = COURSE.title;
 $("#brandTitle").textContent = COURSE.title;
 window.addEventListener("hashchange", () => { route(); window.scrollTo(0, 0); });
+Extras.init({ site:"la", ns:"fmb-la" });
 route();
 if(!S.user) showLogin();
+Extras.load().then(changed => { if(changed && !document.querySelector("#quizForm") && !document.querySelector("#xForm")) route(); });
 </script>
 </body>
 </html>

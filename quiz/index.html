@@ -140,7 +140,10 @@ body.exam .topbar,body.exam main{display:none}
 .ring span{width:86px;height:86px;border-radius:50%;background:var(--surface);display:grid;place-items:center;font:600 22px var(--mono)}
 .badge{display:inline-block;font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:4px}
 .badge.pass{background:var(--good-soft);color:var(--good)} .badge.fail{background:var(--bad-soft);color:var(--bad)}
-.badge.on{background:var(--good-soft);color:var(--good)} .badge.off{background:var(--sunken);color:var(--muted)}
+.badge.on{background:var(--good-soft);color:var(--good)} .badge.off{background:var(--sunken);color:var(--muted)} .badge.sched{background:var(--brass-soft);color:var(--brass)}
+.qcard.soon{border-style:dashed;cursor:default}
+.when{font-size:12.5px;color:var(--muted)}
+.dt{display:flex;gap:6px;align-items:center}
 .rev{border-top:1px solid var(--line);padding:12px 0;display:flex;flex-direction:column;gap:6px}
 .rev .o{font-size:14px;padding:4px 8px;border-radius:6px}
 .rev .o.right{background:var(--good-soft)} .rev .o.wrong{background:var(--bad-soft)}
@@ -223,6 +226,23 @@ function copyText(t){
   if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, () => toast(t));
   else toast(t);
 }
+/* ---- schedule helpers: opensAt / closesAt are epoch milliseconds, 0 = not set ---- */
+const GRACE_MS = 90 * 1000;
+let SKEW = 0;                                    // server clock minus this device's clock, so timers follow the server
+const nowMs = () => Date.now() + SKEW;
+function syncClock(serverNow){ if(Number(serverNow) > 0) SKEW = Number(serverNow) - Date.now(); }
+function quizState(q, t){
+  t = t === undefined ? nowMs() : t;
+  if(!q.open) return "closed";
+  if(q.opensAt && t < q.opensAt) return "scheduled";
+  if(q.closesAt && t >= q.closesAt) return "ended";
+  return "live";
+}
+const STATE_LABEL = { live:"Live", scheduled:"Scheduled", ended:"Ended", closed:"Closed" };
+const STATE_BADGE = { live:"on", scheduled:"sched", ended:"off", closed:"off" };
+function fmtWhen(ms){ return new Date(ms).toLocaleString([], { day:"numeric", month:"short", year:"numeric", hour:"numeric", minute:"2-digit" }); }
+function toLocalInput(ms){ if(!ms) return ""; const d = new Date(ms), p = n => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; }
+function fromLocalInput(v){ if(!v) return 0; const t = new Date(v).getTime(); return isNaN(t) ? 0 : t; }
 function quizLink(id){ return location.origin + location.pathname + "#quiz-" + id; }
 
 /* =====================================================================
@@ -249,20 +269,26 @@ const remote = {
 const local = {
   quizzes(){ let q = readJSON("fq:quizzes", null); if(!q){ q = SEED; writeJSON("fq:quizzes", q); } return q; },
   responses(){ return readJSON("fq:responses", []); },
-  async listQuizzes(){ return { quizzes: this.quizzes().filter(q => q.open).map(q => ({ id:q.id, title:q.title, description:q.description, timeLimit:q.timeLimit, count:q.questions.length })) }; },
+  async listQuizzes(){ return { now: Date.now(), quizzes: this.quizzes().filter(q => ["live", "scheduled"].includes(quizState(q, Date.now()))).map(q => ({ id:q.id, title:q.title, description:q.description, timeLimit:q.timeLimit,
+    opensAt:q.opensAt || 0, closesAt:q.closesAt || 0, upcoming: quizState(q, Date.now()) === "scheduled", count:q.questions.length })) }; },
   async getQuiz(id, emp){
     const q = this.quizzes().find(x => x.id === id);
     if(!q) return { error:"This quiz does not exist. Check the link with your coordinator." };
-    if(!q.open) return { error:"This quiz is not open right now." };
+    const st = quizState(q, Date.now());
+    if(st === "closed") return { error:"This quiz is not open right now." };
+    if(st === "scheduled") return { error:"This quiz opens on " + fmtWhen(q.opensAt) + "." };
+    if(st === "ended") return { error:"This quiz closed on " + fmtWhen(q.closesAt) + "." };
     if(q.oneAttempt && emp && this.responses().some(r => r.quizId === id && r.emp.toLowerCase() === String(emp).toLowerCase())) return { error:"You have already submitted this quiz. Only one attempt is allowed." };
     let qs = q.questions.map(x => ({ qid:x.qid, text:x.text, options:x.options }));
     if(q.shuffle) qs = shuffle(qs);
-    return { quiz:{ id:q.id, title:q.title, description:q.description, timeLimit:q.timeLimit, passPercent:q.passPercent, count:qs.length }, questions:qs };
+    return { quiz:{ id:q.id, title:q.title, description:q.description, timeLimit:q.timeLimit, passPercent:q.passPercent, count:qs.length, opensAt:q.opensAt || 0, closesAt:q.closesAt || 0 }, questions:qs, now: Date.now() };
   },
   async submit(p){
     const q = this.quizzes().find(x => x.id === p.quizId);
     if(!q) return { error:"This quiz no longer exists." };
     if(!q.open) return { error:"This quiz has been closed by the coordinator." };
+    if(q.opensAt && Date.now() < q.opensAt) return { error:"This quiz has not opened yet." };
+    if(q.closesAt && Date.now() >= q.closesAt + GRACE_MS) return { error:"This quiz closed on " + fmtWhen(q.closesAt) + ", so new answers cannot be accepted." };
     let score = 0, total = 0;
     const review = q.questions.map(x => {
       const chosen = p.answers[x.qid] ?? -1; const m = Number(x.marks) || 1; total += m; if(chosen === x.correct) score += m;
@@ -361,9 +387,20 @@ async function viewHome(){
   const box = $("#cards");
   if(r.error){ box.innerHTML = `<div class="panel"><p class="err">${esc(r.error)}</p></div>`; return; }
   if(!r.quizzes.length){ box.innerHTML = `<div class="panel"><h2>No quiz is open right now</h2><p class="muted">Your coordinator will share a link or open a quiz when it is time. Refresh this page then.</p></div>`; return; }
-  box.innerHTML = r.quizzes.map(q => `<a class="qcard" href="#quiz-${encodeURIComponent(q.id)}"><span class="eyebrow">Open</span><h3>${rich(q.title)}</h3>
-    ${q.description ? `<p>${rich(q.description)}</p>` : ""}<div class="meta"><span>${q.count} questions</span><span>${q.timeLimit ? q.timeLimit + " min" : "No time limit"}</span></div></a>`).join("");
+  syncClock(r.now);
+  const card = q => {
+    const meta = `<div class="meta"><span>${q.count} questions</span><span>${q.timeLimit ? q.timeLimit + " min" : "No time limit"}</span></div>`;
+    if(q.upcoming) return `<div class="qcard soon"><span class="eyebrow">Opens soon</span><h3>${rich(q.title)}</h3>${q.description ? `<p>${rich(q.description)}</p>` : ""}${meta}
+      <div class="when">Opens ${esc(fmtWhen(q.opensAt))}${q.closesAt ? ` · closes ${esc(fmtWhen(q.closesAt))}` : ""}</div></div>`;
+    return `<a class="qcard" href="#quiz-${encodeURIComponent(q.id)}"><span class="eyebrow">Open</span><h3>${rich(q.title)}</h3>${q.description ? `<p>${rich(q.description)}</p>` : ""}${meta}
+      ${q.closesAt ? `<div class="when">Closes ${esc(fmtWhen(q.closesAt))}</div>` : ""}</a>`;
+  };
+  box.innerHTML = r.quizzes.map(card).join("");
   math(box);
+  // refresh the list the moment the next quiz opens or closes
+  const times = r.quizzes.flatMap(q => [q.upcoming ? q.opensAt : 0, q.closesAt]).filter(t => t > nowMs()).sort((a, b) => a - b);
+  clearTimeout(viewHome.t);
+  if(times.length) viewHome.t = setTimeout(() => { if((location.hash || "#home") === "#home" && !RUN.active) viewHome(); }, Math.min(times[0] - nowMs() + 1500, 2147000000));
 }
 
 /* =====================================================================
@@ -392,8 +429,10 @@ function viewStart(id){
   call(() => API.getQuiz(id, "")).then(r => {
     if(r.error){ $("#sTitle").textContent = "Quiz unavailable"; $("#sErr").textContent = r.error; return; }
     $("#sTitle").innerHTML = rich(r.quiz.title); $("#sDesc").innerHTML = rich(r.quiz.description || "");
-    $("#sMeta").innerHTML = `<span>${r.quiz.count} questions</span><span>${r.quiz.timeLimit ? r.quiz.timeLimit + " minutes" : "No time limit"}</span><span>Pass mark ${r.quiz.passPercent}%</span>`;
-    $("#ruleTime").hidden = !r.quiz.timeLimit;
+    syncClock(r.now);
+    $("#sMeta").innerHTML = `<span>${r.quiz.count} questions</span><span>${r.quiz.timeLimit ? r.quiz.timeLimit + " minutes" : "No time limit"}</span><span>Pass mark ${r.quiz.passPercent}%</span>${r.quiz.closesAt ? `<span>Closes ${esc(fmtWhen(r.quiz.closesAt))}</span>` : ""}`;
+    $("#ruleTime").hidden = !r.quiz.timeLimit && !r.quiz.closesAt;
+    if(r.quiz.closesAt) $("#ruleTime").textContent = "When the timer reaches zero" + (r.quiz.timeLimit ? " (or the quiz closes, whichever is first)" : "") + ", your answers are submitted automatically.";
     $("#startBtn").disabled = false; math($("#startForm"));
   });
   $("#startForm").onsubmit = async e => {
@@ -408,6 +447,7 @@ function viewStart(id){
     if(r.error){ exitFullscreen(); $("#sErr").textContent = r.error; $("#startBtn").disabled = false; return; }
     if(!r.questions.length){ exitFullscreen(); $("#sErr").textContent = "This quiz has no questions yet."; $("#startBtn").disabled = false; return; }
     await fsReq;
+    syncClock(r.now);
     startRun(r, { name, emp, dept });
   };
 }
@@ -430,7 +470,7 @@ function isFull(){ return !!(document.fullscreenElement || document.webkitFullsc
 function startRun(data, who){
   const saveKey = `fq:prog:${data.quiz.id}:${who.emp.toLowerCase()}`;
   const saved = readJSON(saveKey, null);
-  const resume = saved && saved.order && saved.order.length === data.questions.length && (!data.quiz.timeLimit || Date.now() < saved.startedAt + data.quiz.timeLimit * 60000);
+  const resume = saved && saved.order && saved.order.length === data.questions.length && (!data.quiz.timeLimit || Date.now() < saved.startedAt + data.quiz.timeLimit * 60000) && (!data.quiz.closesAt || nowMs() < data.quiz.closesAt);
   let questions = data.questions;
   if(resume){ const byId = Object.fromEntries(questions.map(q => [q.qid, q])); if(saved.order.every(id => byId[id])) questions = saved.order.map(id => byId[id]); }
   Object.assign(RUN, {
@@ -443,7 +483,7 @@ function startRun(data, who){
   document.body.classList.add("exam");
   $("#runnerHost").innerHTML = `<section class="runner" id="runner" aria-label="Quiz">
     <div class="rbar"><span class="title">${rich(RUN.quiz.title)}</span><span class="who">${esc(who.name)} · ${esc(who.emp)}</span>
-      <span class="timer" id="timer" ${RUN.quiz.timeLimit ? "" : "hidden"}>--:--</span></div>
+      <span class="timer" id="timer" ${RUN.quiz.timeLimit || RUN.quiz.closesAt ? "" : "hidden"}>--:--</span></div>
     <div class="rbody"><div class="qpane"><div class="qinner" id="qinner"></div></div>
       <aside class="palette"><div class="eyebrow">Questions</div><div class="dots" id="dots"></div>
         <div class="legend"><span><i style="background:var(--accent);border-color:var(--accent)"></i>Answered</span>
@@ -455,16 +495,21 @@ function startRun(data, who){
       <button class="btn primary big" id="fsBack">Return to full screen</button></div></div>`;
   $("#fsBack").onclick = () => { enterFullscreen().then(() => { if(isFull() || !fsSupported()) $("#fsCover").hidden = true; }); };
   renderQ(); persist();
-  if(RUN.quiz.timeLimit){ tick(); RUN.timer = setInterval(tick, 1000); }
+  if(RUN.quiz.timeLimit || RUN.quiz.closesAt){ tick(); RUN.timer = setInterval(tick, 1000); }
   if(fsSupported() && !isFull()) $("#fsCover").hidden = false;
 }
 function persist(){ writeJSON(RUN.saveKey, { order:RUN.questions.map(q => q.qid), idx:RUN.idx, answers:RUN.answers, flags:RUN.flags, startedAt:RUN.startedAt, exits:RUN.exits, switches:RUN.switches }); }
-function remaining(){ return RUN.quiz.timeLimit * 60 - (Date.now() - RUN.startedAt) / 1000; }
+function remaining(){      // seconds left: the personal time limit, or the coordinator's closing time if that comes first
+  const ends = [];
+  if(RUN.quiz.timeLimit) ends.push(RUN.startedAt + RUN.quiz.timeLimit * 60000 - Date.now());
+  if(RUN.quiz.closesAt) ends.push(RUN.quiz.closesAt - nowMs());
+  return Math.min(...ends) / 1000;
+}
 function tick(){
   const left = remaining(), t = $("#timer");
   if(!t) return;
   t.textContent = fmtTime(left); t.classList.toggle("low", left <= 60);
-  if(left <= 0 && !RUN.submitting){ clearInterval(RUN.timer); toast("Time is up. Submitting your answers."); doSubmit(true); }
+  if(left <= 0 && !RUN.submitting){ clearInterval(RUN.timer); toast(RUN.quiz.closesAt && nowMs() >= RUN.quiz.closesAt ? "The quiz has closed. Submitting your answers." : "Time is up. Submitting your answers."); doSubmit(true); }
 }
 function renderQ(){
   const q = RUN.questions[RUN.idx], n = RUN.questions.length;
@@ -600,25 +645,40 @@ async function viewAdmin(){
   const qs = await loadAdmin(true); if(!qs) return;
   let html = `<section class="row" style="justify-content:space-between"><div><div class="eyebrow">Coordinator</div><h1 style="font-size:26px">Quizzes</h1></div>
     <div class="row"><a class="btn primary" href="#new">+ New quiz</a><button class="btn ghost" id="signOut">Sign out</button></div></section>${demoBanner()}
-    <div class="tablewrap"><table class="data"><thead><tr><th>Quiz</th><th>Status</th><th>Questions</th><th>Time</th><th>Submissions</th><th></th></tr></thead><tbody>`;
-  if(!qs.length) html += `<tr><td colspan="6" class="wrap muted">No quizzes yet. Click “New quiz” to create the first one.</td></tr>`;
+    <div class="tablewrap"><table class="data"><thead><tr><th>Quiz</th><th>Status</th><th>Schedule</th><th>Questions</th><th>Time</th><th>Submissions</th><th></th></tr></thead><tbody>`;
+  if(!qs.length) html += `<tr><td colspan="7" class="wrap muted">No quizzes yet. Click “New quiz” to create the first one.</td></tr>`;
   qs.forEach(q => {
+    const st = quizState(q);
+    const sched = q.opensAt || q.closesAt ? `${q.opensAt ? "Opens " + esc(fmtWhen(q.opensAt)) : "Opens on publish"}<br>${q.closesAt ? "Closes " + esc(fmtWhen(q.closesAt)) : "Closes manually"}` : `<span class="muted">Manual</span>`;
     html += `<tr><td class="wrap"><b>${rich(q.title)}</b><div class="mono muted" style="font-size:12px">${esc(q.id)}</div></td>
-      <td><button class="btn small" data-toggle="${esc(q.id)}" title="Click to ${q.open ? "close" : "open"}"><span class="badge ${q.open ? "on" : "off"}">${q.open ? "Open" : "Closed"}</span></button></td>
+      <td><span class="badge ${STATE_BADGE[st]}">${STATE_LABEL[st]}</span></td>
+      <td class="wrap when">${sched}</td>
       <td class="num">${q.questions.length}</td><td class="num">${q.timeLimit ? q.timeLimit + " min" : "–"}</td><td class="num">${q.responses || 0}</td>
-      <td><div class="row"><a class="btn small" href="#edit-${encodeURIComponent(q.id)}">Edit</a><a class="btn small" href="#results-${encodeURIComponent(q.id)}">Results</a>
+      <td><div class="row">${q.open && st !== "ended" ? `<button class="btn small" data-close="${esc(q.id)}">${st === "scheduled" ? "Unpublish" : "Close now"}</button>` : `<button class="btn small primary" data-publish="${esc(q.id)}">${st === "ended" ? "Reopen" : "Publish now"}</button>`}
+      <a class="btn small" href="#edit-${encodeURIComponent(q.id)}">Edit</a><a class="btn small" href="#results-${encodeURIComponent(q.id)}">Results</a>
       <button class="btn small" data-copy="${esc(q.id)}">Copy link</button></div></td></tr>`;
   });
   html += `</tbody></table></div>${setupPanel()}`;
   $("#view").innerHTML = html; math($("#view"));
   $("#signOut").onclick = () => { ADMIN = { key:null, quizzes:null }; try{ sessionStorage.removeItem("fq:key"); }catch(e){} location.hash = "#home"; };
   document.querySelectorAll("[data-copy]").forEach(b => b.onclick = () => copyText(quizLink(b.dataset.copy)));
-  document.querySelectorAll("[data-toggle]").forEach(b => b.onclick = async () => {
-    const q = ADMIN.quizzes.find(x => x.id === b.dataset.toggle); const copy = Object.assign({}, q, { open: !q.open }); delete copy.responses;
+  const change = async (b, mut, msg) => {
+    const q = ADMIN.quizzes.find(x => x.id === (b.dataset.close || b.dataset.publish)); const copy = Object.assign({}, q); delete copy.responses;
+    const note = mut(copy);
     b.disabled = true; const r = await call(() => API.adminSave(ADMIN.key, copy));
     if(r.error){ toast(r.error); b.disabled = false; return; }
-    toast(copy.open ? "Quiz opened for participants." : "Quiz closed."); viewAdmin();
-  });
+    toast(note || msg); viewAdmin();
+  };
+  document.querySelectorAll("[data-close]").forEach(b => b.onclick = () => change(b, c => { c.open = false; }, "Quiz closed. Participants can no longer start or submit it."));
+  document.querySelectorAll("[data-publish]").forEach(b => b.onclick = () => change(b, c => {
+    c.open = true; c.opensAt = 0;
+    if(c.closesAt && c.closesAt <= nowMs()){ c.closesAt = 0; return "Quiz is live. Its old closing time had passed, so it was cleared; close it manually or edit the schedule."; }
+    return c.closesAt ? "Quiz is live and will close at " + fmtWhen(c.closesAt) + "." : "Quiz is live. Close it from this page when you are done.";
+  }, ""));
+  // keep the status badges honest while the page stays open
+  clearTimeout(viewAdmin.t);
+  const next = qs.flatMap(q => q.open ? [q.opensAt, q.closesAt] : []).filter(t => t > nowMs()).sort((a, b) => a - b)[0];
+  if(next) viewAdmin.t = setTimeout(() => { if(location.hash === "#admin") viewAdmin(); }, Math.min(next - nowMs() + 1000, 2147000000));
 }
 function setupPanel(){
   return `<div class="panel"><h2>${DEMO ? "Connect the Google Sheet before sharing" : "Connected to Google Sheets"}</h2>
@@ -634,7 +694,7 @@ let ED = null;
 async function viewEditor(id){
   const qs = await loadAdmin(false); if(!qs) return;
   if(id){ const q = qs.find(x => x.id === id); if(!q){ toast("Quiz not found."); location.hash = "#admin"; return; } ED = JSON.parse(JSON.stringify(q)); delete ED.responses; ED.isNew = false; }
-  else ED = { id:"", title:"", description:"", open:false, timeLimit:15, showScore:true, showReview:true, oneAttempt:true, shuffle:false, passPercent:60,
+  else ED = { id:"", title:"", description:"", open:false, timeLimit:15, showScore:true, showReview:true, oneAttempt:true, shuffle:false, passPercent:60, opensAt:0, closesAt:0,
     questions:[{ qid:"q1", text:"", options:["", "", "", ""], correct:-1, explanation:"", marks:1 }], isNew:true };
   renderEditor();
 }
@@ -652,12 +712,19 @@ function renderEditor(){
         <div class="field"><label>Quiz ID</label><input type="text" value="${esc(e.id || "set from the title on save")}" disabled><small>Used in the participant link</small></div>
       </div>
       <div class="grid2">
-        <label class="check"><input type="checkbox" id="eOpen" ${e.open ? "checked" : ""}><span><b>Open for participants</b><br><span class="muted">Closed quizzes cannot be started or submitted.</span></span></label>
+        <label class="check"><input type="checkbox" id="eOpen" ${e.open ? "checked" : ""}><span><b>Published</b><br><span class="muted">Unpublished quizzes are hidden and cannot be started or submitted.</span></span></label>
         <label class="check"><input type="checkbox" id="eOne" ${e.oneAttempt ? "checked" : ""}><span><b>One attempt per employee ID</b></span></label>
         <label class="check"><input type="checkbox" id="eScore" ${e.showScore ? "checked" : ""}><span><b>Show score after submitting</b></span></label>
         <label class="check"><input type="checkbox" id="eReview" ${e.showReview ? "checked" : ""}><span><b>Show correct answers after submitting</b><br><span class="muted">Needs “Show score”.</span></span></label>
         <label class="check"><input type="checkbox" id="eShuffle" ${e.shuffle ? "checked" : ""}><span><b>Shuffle question order</b></span></label>
       </div></div>
+    <div class="panel"><h2>Schedule (optional)</h2>
+      <p class="hint">Times are in this computer's time zone. A published quiz goes live at the opening time and stops accepting answers at the closing time; anyone still answering is submitted automatically at that moment. Leave a box empty to open as soon as it is published, or to close only when you press “Close now”.</p>
+      <div class="grid2">
+        <div class="field"><label for="eOpens">Opens at</label><div class="dt"><input type="datetime-local" id="eOpens" value="${toLocalInput(e.opensAt)}" style="width:auto;flex:1"><button class="btn ghost small" type="button" data-clr="eOpens">Clear</button></div></div>
+        <div class="field"><label for="eCloses">Closes at</label><div class="dt"><input type="datetime-local" id="eCloses" value="${toLocalInput(e.closesAt)}" style="width:auto;flex:1"><button class="btn ghost small" type="button" data-clr="eCloses">Clear</button></div></div>
+      </div>
+      <div class="hint" id="schedNote"></div></div>
     <div class="panel"><div class="row" style="justify-content:space-between"><h2>Questions (<span id="qCount">${e.questions.length}</span>)</h2>
       <div class="row"><button class="btn" id="addQ">+ Add question</button><button class="btn" id="impToggle">Import from spreadsheet</button></div></div>
       <p class="hint">Write maths between dollar signs, e.g. <span class="mono">$A^{-1}$</span> or <span class="mono">$\\det(A) = 0$</span>. Select the radio button next to the correct option.</p>
@@ -675,8 +742,16 @@ function renderEditor(){
     e.title = $("#eTitle").value.trim(); e.description = $("#eDesc").value.trim();
     e.timeLimit = Math.max(0, parseInt($("#eTime").value, 10) || 0); e.passPercent = Math.min(100, Math.max(0, parseInt($("#ePass").value, 10) || 0));
     e.open = $("#eOpen").checked; e.oneAttempt = $("#eOne").checked; e.showScore = $("#eScore").checked; e.showReview = $("#eReview").checked; e.shuffle = $("#eShuffle").checked;
+    e.opensAt = fromLocalInput($("#eOpens").value); e.closesAt = fromLocalInput($("#eCloses").value);
+    const st = quizState(e);
+    $("#schedNote").textContent = !e.open ? "Not published: participants cannot see this quiz."
+      : st === "scheduled" ? "Will go live on " + fmtWhen(e.opensAt) + (e.closesAt ? " and close on " + fmtWhen(e.closesAt) + "." : ".")
+      : st === "ended" ? "The closing time has already passed, so this quiz would not be available."
+      : e.closesAt ? "Live now. Closes on " + fmtWhen(e.closesAt) + "." : "Live now. Stays open until you close it.";
   };
-  ["eTitle","eDesc","eTime","ePass","eOpen","eOne","eScore","eReview","eShuffle"].forEach(id => $("#" + id).addEventListener("input", sync));
+  ["eTitle","eDesc","eTime","ePass","eOpen","eOne","eScore","eReview","eShuffle","eOpens","eCloses"].forEach(id => $("#" + id).addEventListener("input", sync));
+  document.querySelectorAll("[data-clr]").forEach(b => b.onclick = () => { $("#" + b.dataset.clr).value = ""; sync(); });
+  sync();
   const add = () => { e.questions.push({ qid:"", text:"", options:["", "", "", ""], correct:-1, explanation:"", marks:1 }); renderQList(); $("#qList").lastElementChild.querySelector("textarea").focus(); };
   $("#addQ").onclick = add; $("#addQ2").onclick = add;
   $("#impToggle").onclick = () => { $("#impBox").hidden = !$("#impBox").hidden; };
@@ -716,6 +791,8 @@ function renderEditor(){
 }
 function validate(e){
   if(!e.title) return "Give the quiz a title.";
+  if(e.opensAt && e.closesAt && e.closesAt <= e.opensAt) return "The closing time must be after the opening time.";
+  if(e.open && e.closesAt && e.closesAt <= nowMs()) return "The closing time is already in the past. Change it, clear it, or unpublish the quiz.";
   if(!e.questions.length) return "Add at least one question.";
   for(let i = 0; i < e.questions.length; i++){
     const q = e.questions[i], n = i + 1;

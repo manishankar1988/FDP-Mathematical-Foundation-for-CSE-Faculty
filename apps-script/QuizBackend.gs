@@ -24,7 +24,7 @@
 const ADMIN_KEY = "change-this-key";
 
 const COLS = {
-  Quizzes:   ["id", "title", "description", "open", "timeLimit", "showScore", "showReview", "oneAttempt", "shuffle", "passPercent"],
+  Quizzes:   ["id", "title", "description", "open", "timeLimit", "showScore", "showReview", "oneAttempt", "shuffle", "passPercent", "opensAt", "closesAt"],
   Questions: ["quizId", "qid", "order", "question", "optA", "optB", "optC", "optD", "optE", "optF", "correct", "explanation", "marks"],
   Responses: ["time", "quizId", "quizTitle", "name", "emp", "dept", "score", "total", "percent", "passed",
               "timeTakenSec", "fullscreenExits", "tabSwitches", "answers"]
@@ -39,6 +39,11 @@ function sheet_(name) {
     sh = ss.insertSheet(name);
     sh.getRange(1, 1, 1, COLS[name].length).setValues([COLS[name]]).setFontWeight("bold");
     sh.setFrozenRows(1);
+  } else if (sh.getLastColumn() > 0) {
+    // add any columns introduced by a newer version of this script (e.g. opensAt, closesAt)
+    const head = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+    const missing = COLS[name].filter(c => head.indexOf(c) < 0);
+    if (missing.length) sh.getRange(1, head.length + 1, 1, missing.length).setValues([missing]).setFontWeight("bold");
   }
   return sh;
 }
@@ -64,9 +69,19 @@ function quizFromRow_(r) {
     id: String(r.id), title: String(r.title || r.id), description: String(r.description || ""),
     open: bool_(r.open), timeLimit: num_(r.timeLimit, 0), showScore: bool_(r.showScore),
     showReview: bool_(r.showReview), oneAttempt: bool_(r.oneAttempt), shuffle: bool_(r.shuffle),
-    passPercent: num_(r.passPercent, 60)
+    passPercent: num_(r.passPercent, 60),
+    opensAt: num_(r.opensAt, 0), closesAt: num_(r.closesAt, 0)   // epoch milliseconds, 0 = not scheduled
   };
 }
+/* Schedule: a published quiz is live between opensAt and closesAt (either may be empty). */
+const GRACE_MS = 90 * 1000;   // answers sent up to 90 s after closing (auto-submit at the deadline) are still accepted
+function state_(q, now) {
+  if (!q.open) return "closed";
+  if (q.opensAt && now < q.opensAt) return "scheduled";
+  if (q.closesAt && now >= q.closesAt) return "ended";
+  return "live";
+}
+function fmt_(ms) { return Utilities.formatDate(new Date(ms), Session.getScriptTimeZone(), "d MMM yyyy, h:mm a"); }
 function questionFromRow_(r) {
   const options = ["optA", "optB", "optC", "optD", "optE", "optF"]
     .map(k => r[k]).filter(x => x !== "" && x !== null && x !== undefined).map(String);
@@ -102,21 +117,28 @@ function doGet(e) {
   try {
     if (p.action === "quizzes") {
       const qs = rows_("Questions");
-      return json_({ quizzes: rows_("Quizzes").map(quizFromRow_).filter(q => q.open).map(q => ({
+      const now = Date.now();
+      return json_({ now: now, quizzes: rows_("Quizzes").map(quizFromRow_)
+        .filter(q => { const st = state_(q, now); return st === "live" || st === "scheduled"; }).map(q => ({
         id: q.id, title: q.title, description: q.description, timeLimit: q.timeLimit,
+        opensAt: q.opensAt, closesAt: q.closesAt, upcoming: state_(q, now) === "scheduled",
         count: qs.filter(r => String(r.quizId) === q.id).length
       })) });
     }
     if (p.action === "quiz") {
       const quiz = loadQuiz_(p.id);
       if (!quiz) return json_({ error: "This quiz does not exist. Check the link with your coordinator." });
-      if (!quiz.open) return json_({ error: "This quiz is not open right now." });
+      const now = Date.now(), st = state_(quiz, now);
+      if (st === "closed") return json_({ error: "This quiz is not open right now." });
+      if (st === "scheduled") return json_({ error: "This quiz opens on " + fmt_(quiz.opensAt) + ".", opensAt: quiz.opensAt, now: now });
+      if (st === "ended") return json_({ error: "This quiz closed on " + fmt_(quiz.closesAt) + ".", closesAt: quiz.closesAt, now: now });
       if (quiz.oneAttempt && p.emp && attempted_(quiz.id, p.emp))
         return json_({ error: "You have already submitted this quiz. Only one attempt is allowed." });
       let questions = quiz.questions.map(q => ({ qid: q.qid, text: q.text, options: q.options }));
       if (quiz.shuffle) questions = shuffle_(questions);
       return json_({ quiz: { id: quiz.id, title: quiz.title, description: quiz.description, timeLimit: quiz.timeLimit,
-        passPercent: quiz.passPercent, count: questions.length }, questions: questions });
+        passPercent: quiz.passPercent, count: questions.length,
+        opensAt: quiz.opensAt, closesAt: quiz.closesAt }, questions: questions, now: now });
     }
     return json_({ ok: true, service: "fdp-quiz" });
   } catch (err) {
@@ -151,7 +173,10 @@ function doPost(e) {
 function submit_(d) {
   const quiz = loadQuiz_(d.quizId);
   if (!quiz) return { error: "This quiz no longer exists." };
+  const now = Date.now();
   if (!quiz.open) return { error: "This quiz has been closed by the coordinator." };
+  if (quiz.opensAt && now < quiz.opensAt) return { error: "This quiz has not opened yet." };
+  if (quiz.closesAt && now >= quiz.closesAt + GRACE_MS) return { error: "This quiz closed on " + fmt_(quiz.closesAt) + ", so new answers cannot be accepted." };
   if (!d.name || !d.emp) return { error: "Name and employee ID are required." };
   if (quiz.oneAttempt && attempted_(quiz.id, d.emp)) return { error: "You have already submitted this quiz." };
   const answers = d.answers || {};
@@ -187,7 +212,8 @@ function adminSave_(quiz) {
   const quizzes = rows_("Quizzes").filter(r => String(r.id) !== quiz.id);
   quizzes.push({ id: quiz.id, title: quiz.title, description: quiz.description || "", open: !!quiz.open,
     timeLimit: Number(quiz.timeLimit) || 0, showScore: !!quiz.showScore, showReview: !!quiz.showReview,
-    oneAttempt: !!quiz.oneAttempt, shuffle: !!quiz.shuffle, passPercent: Number(quiz.passPercent) || 60 });
+    oneAttempt: !!quiz.oneAttempt, shuffle: !!quiz.shuffle, passPercent: Number(quiz.passPercent) || 60,
+    opensAt: Number(quiz.opensAt) || 0, closesAt: Number(quiz.closesAt) || 0 });
   rewrite_("Quizzes", quizzes);
   const keep = rows_("Questions").filter(r => String(r.quizId) !== quiz.id);
   (quiz.questions || []).forEach((q, i) => {
