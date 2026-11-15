@@ -22,7 +22,7 @@
  *  AFTER EDITING THIS SCRIPT: Deploy → Manage deployments → Edit (pencil) → Version: New version → Deploy.
  */
 
-const ADMIN_KEY = "change-this-key";
+const ADMIN_KEY = "CSESahrdaya@2026";
 
 const TABS = {
   Scores: ["Time", "Name", "Emp ID", "Dept", "Courses", "Day", "Day title", "Attempt", "Score", "Total", "Percent", "Passed", "Answers"],

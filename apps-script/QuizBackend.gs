@@ -21,7 +21,7 @@
  * You can also edit Quizzes and Questions directly in the sheet.
  */
 
-const ADMIN_KEY = "change-this-key";
+const ADMIN_KEY = "CSESahrdaya@2026";
 
 const COLS = {
   Quizzes:   ["id", "title", "description", "open", "timeLimit", "showScore", "showReview", "oneAttempt", "shuffle", "passPercent", "opensAt", "closesAt"],
