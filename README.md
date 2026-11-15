@@ -40,15 +40,13 @@ Then turn on Pages as in step 3.
 
 Without this, the pages run in demo mode and scores stay in each person's browser.
 
-**Quiz Hall** (`quiz/index.html`) — uses `apps-script/QuizBackend.gs`
-1. New Google Sheet → **Extensions → Apps Script** → paste `QuizBackend.gs` → change `ADMIN_KEY` to your own secret → Save.
-2. **Deploy → New deployment → Web app**; Execute as **Me**; Who has access **Anyone** → Deploy → copy the URL ending in `/exec`.
-3. In `quiz/index.html`, set `SCRIPT_URL: "<that URL>"` in the SETTINGS block near the top of the script. Commit.
-4. Open `.../quiz/#admin`, sign in with your `ADMIN_KEY`, and create quizzes.
-
-**Course and Linear Algebra modules** (`course/index.html`, `linear-algebra/index.html`) — use `apps-script/CourseScores.gs`
-1. Another Google Sheet (or the same one) → Apps Script → paste `CourseScores.gs` → change `ADMIN_KEY` to your own secret → Deploy as a web app as above.
-2. In each page, set `SHEET_URL: "<that URL>"` and change `ADMIN_PIN` in the SETTINGS block. Commit.
+All three pages share **one** script and **one** Google Sheet: `apps-script/FDPBackend.gs`.
+1. New Google Sheet → **Extensions → Apps Script**. Delete any existing files, paste `FDPBackend.gs` as the only file → change `ADMIN_KEY` to your own secret → Save.
+2. Run `doGet` once and authorise. Then **Deploy → New deployment → Web app**; Execute as **Me**; Who has access **Anyone** → Deploy → copy the URL ending in `/exec`.
+3. Put that same URL in all three pages, in the SETTINGS block near the top of each script, and commit:
+   - `quiz/index.html` → `SCRIPT_URL: "<URL>"`
+   - `course/index.html` and `linear-algebra/index.html` → `SHEET_URL: "<URL>"`, and change `ADMIN_PIN`.
+4. Open `.../quiz/#admin` and sign in with your `ADMIN_KEY` to create quizzes. Use the same key for *Add content for participants* in the course pages.
 
 ## What coordinators can do from the website
 
@@ -67,7 +65,7 @@ Without this, the pages run in demo mode and scores stay in each person's browse
 - **Replace the main video** of a topic for everyone (also available on each topic page while in coordinator view).
 - **A whole new topic** at the end of a day, with video, reading notes and its own poll.
 - Every item can be published/hidden, shown from a date and hidden after a date. Items can be edited or deleted later.
-- This needs `apps-script/CourseScores.gs` with your own `ADMIN_KEY` set (the key is asked once per browser tab).
+- This needs `apps-script/FDPBackend.gs` deployed with your own `ADMIN_KEY` set (the key is asked once per browser tab).
   Without `SHEET_URL` the items are kept only in the coordinator's own browser, so other participants will not see them.
 
 After editing an Apps Script later: **Deploy → Manage deployments → Edit → Version: New version → Deploy** (the URL stays the same).

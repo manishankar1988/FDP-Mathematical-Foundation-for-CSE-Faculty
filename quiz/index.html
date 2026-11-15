@@ -198,7 +198,7 @@ pre.code{background:var(--sunken);border-radius:8px;padding:10px;font:12.5px/1.5
    SETTINGS — the only part you need to edit before uploading to GitHub
    ===================================================================== */
 const CONFIG = {
-  SCRIPT_URL: "https://script.google.com/macros/s/AKfycbxP_3duk7BXt5a-9ZoB0TH70U4wxU6GVQYowEdkzSYsdAkjMskWhmY4kSbF4vkcoJTTBA/exec",   // Google Apps Script web-app URL (from QuizBackend.gs). Empty = demo mode on this browser only.
+  SCRIPT_URL: "https://script.google.com/macros/s/AKfycbxP_3duk7BXt5a-9ZoB0TH70U4wxU6GVQYowEdkzSYsdAkjMskWhmY4kSbF4vkcoJTTBA/exec",   // Google Apps Script web-app URL (from FDPBackend.gs). Empty = demo mode on this browser only.
   APP_TITLE: "FDP Quiz Hall",
   ORG: "Department of CSE · Sahrdaya College of Engineering and Technology",
   DEMO_PIN: "2026"  // coordinator PIN used only in demo mode (with SCRIPT_URL set, the key lives in the Apps Script)
@@ -683,7 +683,7 @@ async function viewAdmin(){
 function setupPanel(){
   return `<div class="panel"><h2>${DEMO ? "Connect the Google Sheet before sharing" : "Connected to Google Sheets"}</h2>
     ${DEMO ? `<p class="muted">Right now everything is stored in this browser only, so participants' scores cannot reach you. To collect scores in one place:</p>
-    <ol class="rules" style="color:var(--ink)"><li>Create a Google Sheet → Extensions → Apps Script, paste <span class="mono">QuizBackend.gs</span>, and set your own <span class="mono">ADMIN_KEY</span>.</li>
+    <ol class="rules" style="color:var(--ink)"><li>Create a Google Sheet → Extensions → Apps Script, paste <span class="mono">FDPBackend.gs</span>, and set your own <span class="mono">ADMIN_KEY</span>.</li>
     <li>Deploy → New deployment → Web app (Execute as: Me, Who has access: Anyone). Copy the URL ending in <span class="mono">/exec</span>.</li>
     <li>Open <span class="mono">index.html</span>, paste the URL into <span class="mono">SCRIPT_URL</span> in the settings at the top of the script, and upload it to GitHub.</li></ol>`
     : `<p class="muted">Quizzes, questions and every submission are stored in your Google Sheet (tabs: Quizzes, Questions, Responses). Correct answers stay in the sheet and are never sent to participants before they submit.</p>`}</div>`;
