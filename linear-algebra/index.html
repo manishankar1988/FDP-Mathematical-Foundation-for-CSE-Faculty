@@ -1,0 +1,844 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Linear Algebra Essentials</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<style>
+/* Layout: lecture-hall course player — left rail of days, right pane with Watch → Read → Vote per topic, day quiz at the end. */
+:root{
+  --bg:#f4f6f5; --surface:#ffffff; --sunken:#e9eeec; --ink:#14211f; --muted:#56635f; --line:#d5dddb;
+  --accent:#0d6b5c; --accent-ink:#ffffff; --accent-soft:#d9ece8; --brass:#9a6412; --brass-soft:#f4e6cc;
+  --good:#1f7a3d; --good-soft:#dcefe2; --bad:#b4372b; --bad-soft:#f6dedb;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --serif:"IBM Plex Serif",Georgia,"Times New Roman",serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1514; --surface:#151f1d; --sunken:#1b2725; --ink:#e2ebe8; --muted:#9aa9a5; --line:#2b3a37;
+  --accent:#43bfa6; --accent-ink:#06201b; --accent-soft:#163a33; --brass:#e1a94c; --brass-soft:#3a2c14;
+  --good:#5cc983; --good-soft:#163222; --bad:#ef7d70; --bad-soft:#3b1b18; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#0e1514; --surface:#151f1d; --sunken:#1b2725; --ink:#e2ebe8; --muted:#9aa9a5; --line:#2b3a37;
+  --accent:#43bfa6; --accent-ink:#06201b; --accent-soft:#163a33; --brass:#e1a94c; --brass-soft:#3a2c14;
+  --good:#5cc983; --good-soft:#163222; --bad:#ef7d70; --bad-soft:#3b1b18; color-scheme:dark;}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
+[hidden]{display:none!important}
+a{color:var(--accent)}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3,h4{text-wrap:balance;line-height:1.25;margin:0}
+.mono{font-family:var(--mono)}
+.eyebrow{font:500 11.5px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+
+/* top bar */
+.topbar{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--line);
+  padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);min-width:0}
+.brand-mark{width:34px;height:34px;border-radius:8px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font:600 15px var(--mono);flex:none}
+.brand b{display:block;font-size:15px}
+.brand small{display:block;color:var(--muted);font-size:12px}
+.topbar .spacer{flex:1}
+.who{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.who strong{color:var(--ink);font-weight:600}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 12px;cursor:pointer;font-weight:500;font-size:14px;text-decoration:none;color:var(--ink)}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+.btn.ghost:hover{color:var(--ink)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn.small{padding:4px 9px;font-size:13px}
+
+/* shell */
+.shell{display:grid;grid-template-columns:290px minmax(0,1fr);min-height:calc(100vh - 56px)}
+.rail{border-right:1px solid var(--line);background:var(--surface);padding:18px 14px 40px;position:sticky;top:56px;align-self:start;max-height:calc(100vh - 56px);overflow:auto}
+.rail h3{margin:14px 8px 8px}
+.daylink{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px;border-radius:8px;text-decoration:none;color:var(--ink)}
+.daylink:hover{background:var(--sunken)}
+.daylink.active{background:var(--accent-soft)}
+.daylink .num{font:600 12px var(--mono);color:var(--muted);text-align:center;border:1px solid var(--line);border-radius:6px;padding:5px 0}
+.daylink.done .num{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.daylink .t{font-size:13.5px;line-height:1.3;min-width:0}
+.daylink .t small{display:block;color:var(--muted);font-size:11.5px;font-family:var(--mono)}
+.daylink .score{font:500 12px var(--mono);color:var(--brass)}
+.rail .admin-link{display:block;margin:22px 8px 0;font-size:13px;color:var(--muted)}
+main{min-width:0;padding:24px max(16px,env(safe-area-inset-right,0px)) 64px max(16px,env(safe-area-inset-left,0px))}
+.wrap{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+
+/* home */
+.hero{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:20px;align-items:end;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.hero h1{font-size:30px;letter-spacing:-.01em}
+.hero p{color:var(--muted);margin:8px 0 0;max-width:62ch}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px}
+.stat b{display:block;font:600 22px var(--mono);font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--muted)}
+.weekgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.daycard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:8px}
+.daycard:hover{border-color:var(--accent)}
+.daycard h3{font-size:16px}
+.daycard p{margin:0;font-size:12.5px;color:var(--muted)}
+.bar{height:6px;border-radius:3px;background:var(--sunken);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent)}
+.cardfoot{display:flex;justify-content:space-between;font:500 12px var(--mono);color:var(--muted)}
+.cardfoot .best{color:var(--brass)}
+
+/* day */
+.dayhead{display:flex;flex-direction:column;gap:6px}
+.dayhead h1{font-size:26px}
+.dayhead .lands{font-size:13px;color:var(--muted)}
+.steps{display:flex;gap:6px;flex-wrap:wrap}
+.step{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer;display:flex;gap:7px;align-items:center;text-decoration:none;color:var(--ink)}
+.step .dot{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.step.done .dot{background:var(--accent)}
+.step.active{border-color:var(--accent);background:var(--accent-soft);font-weight:600}
+.step.quiz{border-style:dashed}
+.step.quiz.done .dot{background:var(--brass)}
+
+.topic{display:flex;flex-direction:column;gap:18px}
+.topic h2{font-size:22px}
+.phase{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.phase>header{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--sunken)}
+.phase>header .n{font:600 12px var(--mono);width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--accent-ink)}
+.phase>header h3{font-size:14px;font-weight:600}
+.phase>header .right{margin-left:auto;font-size:12px;color:var(--muted)}
+.phase .body{padding:16px}
+.video{position:relative;width:100%;max-width:100%;aspect-ratio:16/9;background:#000}
+.video iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.vmeta{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 16px;font-size:12.5px;color:var(--muted)}
+.vmeta .src{flex:1;min-width:0}
+.vsearch{padding:22px 16px;display:flex;flex-direction:column;gap:10px;background:repeating-linear-gradient(135deg,var(--sunken) 0 12px,var(--surface) 12px 24px)}
+.vsearch p{margin:0;max-width:60ch}
+.vsearch .row{display:flex;gap:8px;flex-wrap:wrap}
+.override{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:12.5px;color:var(--muted)}
+.override input{flex:1;min-width:200px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+
+.notes{font-family:var(--serif);font-size:16.5px;line-height:1.65;max-width:68ch}
+.notes p{margin:0 0 .8em}
+.notes h4{font:600 13px var(--sans);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:1.2em 0 .5em}
+.notes ul,.notes ol{margin:0 0 .9em;padding-left:1.3em}
+.notes li{margin:.25em 0}
+.notes code{font-family:var(--mono);font-size:.86em;background:var(--sunken);padding:1px 5px;border-radius:4px}
+.notes .worked{font-family:var(--sans);font-size:14.5px;background:var(--brass-soft);border-left:3px solid var(--brass);padding:12px 14px;border-radius:0 8px 8px 0;margin:1em 0;overflow-x:auto}
+.notes .lands{font-family:var(--sans);font-size:13.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:10px;margin-top:14px}
+.notes table.mini{border-collapse:collapse;font-family:var(--sans);font-size:13.5px;margin:.4em 0 1em;display:block;overflow-x:auto;max-width:100%}
+.notes table.mini th,.notes table.mini td{border-bottom:1px solid var(--line);padding:6px 10px;text-align:left;white-space:nowrap}
+.notes table.mini th{font-weight:600;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.katex{font-size:1.04em}
+.katex-display{overflow-x:auto;overflow-y:hidden}
+
+.poll h4{font-size:16px;margin-bottom:12px}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{position:relative;display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;cursor:pointer;background:var(--surface);text-align:left;width:100%;overflow:hidden}
+.opt:hover{border-color:var(--accent)}
+.opt .fill{position:absolute;inset:0 auto 0 0;background:var(--accent-soft);z-index:0;transition:width .5s ease}
+.opt>*:not(.fill){position:relative;z-index:1}
+.opt .pct{margin-left:auto;font:500 13px var(--mono);font-variant-numeric:tabular-nums;color:var(--muted)}
+.opt.mine{border-color:var(--accent);font-weight:600}
+.pollnote{font-size:12.5px;color:var(--muted);margin-top:10px}
+
+.navrow{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+
+/* quiz */
+.q{border-top:1px solid var(--line);padding:16px 0}
+.q:first-of-type{border-top:0;padding-top:0}
+.q .qn{font:500 12px var(--mono);color:var(--muted)}
+.q h4{font-size:16px;font-weight:500;margin:4px 0 10px}
+.q label{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;cursor:pointer}
+.q label:hover{border-color:var(--accent)}
+.q input{margin-top:4px;accent-color:var(--accent)}
+.q label.right{background:var(--good-soft);border-color:var(--good)}
+.q label.wrong{background:var(--bad-soft);border-color:var(--bad)}
+.q .explain{font-size:13.5px;color:var(--muted);margin-top:6px}
+.q .explain b.ok{color:var(--good)} .q .explain b.no{color:var(--bad)}
+.result{display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+.ring{--p:0;width:92px;height:92px;border-radius:50%;background:conic-gradient(var(--brass) calc(var(--p)*1%),var(--sunken) 0);display:grid;place-items:center}
+.ring span{width:72px;height:72px;border-radius:50%;background:var(--surface);display:grid;place-items:center;font:600 20px var(--mono)}
+.badge{display:inline-block;font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:4px}
+.badge.pass{background:var(--good-soft);color:var(--good)} .badge.fail{background:var(--bad-soft);color:var(--bad)}
+.locked{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:20px}
+.locked ul{margin:8px 0 0;padding-left:1.2em}
+.attempts{font-size:13px;color:var(--muted)}
+
+/* tables (admin) */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table.data{border-collapse:collapse;width:100%;font-size:13px}
+table.data th,table.data td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+table.data th{background:var(--sunken);font-weight:600;font-size:12px}
+table.data td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.panel h3{font-size:16px}
+.panel p{margin:0;color:var(--muted);font-size:13.5px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.status{font-size:13px}
+.status.ok{color:var(--good)} .status.off{color:var(--muted)}
+
+/* modal */
+.scrim{position:fixed;inset:0;background:rgba(10,20,18,.55);display:grid;place-items:center;z-index:50;padding:16px}
+.modal{background:var(--surface);border-radius:14px;max-width:440px;width:100%;padding:22px;display:flex;flex-direction:column;gap:12px;border:1px solid var(--line)}
+.modal h2{font-size:20px}
+.modal p{margin:0;color:var(--muted);font-size:14px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:12.5px;font-weight:600}
+.field input,.field select{padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.err{color:var(--bad);font-size:13px;min-height:1em}
+
+.toast{position:fixed;left:50%;bottom:max(18px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 14px;border-radius:8px;font-size:13.5px;z-index:60}
+
+@media (max-width:860px){
+  .shell{grid-template-columns:1fr}
+  .rail{position:static;max-height:none;border-right:0;border-bottom:1px solid var(--line);padding:10px 12px}
+  .rail .days{display:flex;overflow-x:auto;gap:6px;padding-bottom:4px}
+  .rail h3,.rail .admin-link{display:none}
+  .daylink{grid-template-columns:auto;padding:4px}
+  .daylink .t,.daylink .score{display:none}
+  .daylink .num{width:34px}
+  .hero{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a class="brand" href="#home">
+    <span class="brand-mark">Ax</span>
+    <span><b id="brandTitle">Linear Algebra Essentials</b><small id="brandSub">FDP Phase 1 · 16–17 Nov</small></span>
+  </a>
+  <span class="spacer"></span>
+  <div class="who" id="who"></div>
+</header>
+
+<div class="shell">
+  <nav class="rail" aria-label="Days">
+    <div class="days" id="railDays"></div>
+    <a class="admin-link" href="#admin">Coordinator view →</a>
+  </nav>
+  <main><div class="wrap" id="view"></div></main>
+</div>
+
+<div class="scrim" id="loginScrim" hidden>
+  <form class="modal" id="loginForm" novalidate>
+    <div class="eyebrow">Sign in to record your progress</div>
+    <h2>Who is taking the course?</h2>
+    <p>Your quiz scores and poll votes are saved under these details.</p>
+    <div class="field"><label for="fName">Full name</label><input id="fName" autocomplete="name" required></div>
+    <div class="field"><label for="fEmp">Employee ID</label><input id="fEmp" required></div>
+    <div class="field"><label for="fDept">Department</label><input id="fDept" value="CSE"></div>
+    <div class="field"><label for="fCourses">Courses you handle this semester</label><input id="fCourses" placeholder="e.g. 24CST402 OS, 24CSL407 OS Lab"></div>
+    <div class="err" id="loginErr"></div>
+    <button class="btn primary" type="submit">Start the course</button>
+  </form>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* =====================================================================
+   LINEAR ALGEBRA ESSENTIALS — course content (FDP Phase 1, 16–17 Nov 2026)
+   Video:  { yt: "<YouTube ID>", src: "who/what" } → embedded player
+   Notes use KaTeX: $inline$ and $$display$$, written with N`...` (String.raw).
+   Quiz: a = index of the correct option (0-based), e = explanation.
+   ===================================================================== */
+const N = String.raw;
+
+const COURSE = {
+  title: "Linear Algebra Essentials",
+  subtitle: "Self-learning module for FDP Phase 1 (16–17 November 2026), Sahrdaya College of Engineering and Technology",
+  institution: "Department of Computer Science and Engineering",
+  groups: [
+    { week: 1, rail: "FDP Phase 1 · Linear algebra", home: "Two days · sessions by Dr. Krishnadas J / Anly Antony · lectures by Prof. Gilbert Strang, MIT" }
+  ],
+  days: [
+
+{
+  id: 1, week: 1, code: "Mon 16 Nov", title: "Systems, matrices and subspaces",
+  lands: "Programming in C (2-D arrays) · Computer Graphics · Machine Learning · Deep Learning · HPC",
+  topics: [
+    {
+      id: "la1t1", title: "Linear equations and elimination",
+      video: { yt: "QVKj3LADCnA", src: "MIT 18.06 Linear Algebra (Spring 2010) · Lecture 2: Elimination with Matrices · Gilbert Strang" },
+      notes: N`
+<p>A system of $m$ linear equations in $n$ unknowns is written $Ax = b$. There are two ways to picture it.</p>
+<ul>
+<li><b>Row picture:</b> each equation is a line (2-D), plane (3-D) or hyperplane; the solution is where they all meet.</li>
+<li><b>Column picture:</b> $Ax$ is a <b>linear combination of the columns of $A$</b>, with weights $x_1, \dots, x_n$. Solving $Ax = b$ means finding the weights that produce $b$.</li>
+</ul>
+$$\begin{bmatrix}2 & -1\\ -1 & 2\end{bmatrix}\begin{bmatrix}x\\y\end{bmatrix} = x\begin{bmatrix}2\\-1\end{bmatrix} + y\begin{bmatrix}-1\\2\end{bmatrix}$$
+<h4>Gaussian elimination</h4>
+<p>Subtract multiples of one row from the rows below it to reach an upper-triangular matrix $U$, then solve by back-substitution. The diagonal entries of $U$ are the <b>pivots</b>. Each step is a multiplication by an elementary matrix $E_{ij}$, and recording the multipliers gives the factorisation $A = LU$.</p>
+<ul>
+<li>A zero in a pivot position is fixed by a <b>row exchange</b> (a permutation matrix $P$).</li>
+<li>If no exchange helps, the matrix is <b>singular</b>: there are either no solutions or infinitely many.</li>
+<li>Cost for an $n \times n$ system: about $\tfrac{n^3}{3}$ multiplications — $10^{9}$ for $n = 1000$, instant on a laptop.</li>
+</ul>
+<div class="worked"><b>Worked example.</b> Solve
+$$x + 2y + z = 2,\quad 3x + 8y + z = 12,\quad 4y + z = 2.$$
+Row 2 − 3 × Row 1: $2y - 2z = 6$. &nbsp;Row 3 − 2 × (new Row 2): $5z = -10$.<br>
+Pivots are 1, 2, 5. Back-substitute: $z = -2$, then $2y + 4 = 6 \Rightarrow y = 1$, then $x + 2 - 2 = 2 \Rightarrow x = 2$.<br>
+Check in equation 2: $6 + 8 - 2 = 12$ ✓</div>
+<p class="lands"><b>Teaching hook:</b> Every circuit (KVL/KCL in FEEE), every linear regression and every physics simulation in a game engine ends in $Ax = b$. Students who see the column picture early find least squares and neural network layers far easier later.</p>`,
+      poll: { q: "Which picture do you use first when teaching Ax = b?", opts: ["Row picture (intersecting lines)", "Column picture (combination of columns)", "Both together", "Neither, straight to elimination"] }
+    },
+    {
+      id: "la1t2", title: "Matrix multiplication and inverses",
+      video: { yt: "FX4C-JpTFgY", src: "MIT 18.06 Linear Algebra (Spring 2010) · Lecture 3: Multiplication and Inverse Matrices · Gilbert Strang" },
+      notes: N`
+<p>For $A$ of size $m \times n$ and $B$ of size $n \times p$, the product $AB$ is $m \times p$. There are four equally valid ways to compute it:</p>
+<ol>
+<li><b>Entry by entry:</b> $(AB)_{ij}$ = row $i$ of $A$ · column $j$ of $B$.</li>
+<li><b>By columns:</b> each column of $AB$ is $A$ times a column of $B$ (a combination of $A$'s columns).</li>
+<li><b>By rows:</b> each row of $AB$ is a row of $A$ times $B$.</li>
+<li><b>Column × row:</b> $AB = \sum_k (\text{column } k \text{ of } A)(\text{row } k \text{ of } B)$ — a sum of rank-one matrices. This view leads straight to the SVD.</li>
+</ol>
+<p>The cost is $mnp$ multiplications. Matrix multiplication is associative but <b>not commutative</b>: $AB \ne BA$ in general.</p>
+<h4>Inverses</h4>
+<ul>
+<li>$A^{-1}$ exists only for square $A$ with $n$ non-zero pivots; then $AA^{-1} = A^{-1}A = I$.</li>
+<li>For $2 \times 2$: $\begin{bmatrix}a&b\\c&d\end{bmatrix}^{-1} = \dfrac{1}{ad - bc}\begin{bmatrix}d&-b\\-c&a\end{bmatrix}$.</li>
+<li>Order reverses: $(AB)^{-1} = B^{-1}A^{-1}$ and $(AB)^\top = B^\top A^\top$.</li>
+<li>$A$ is <b>not</b> invertible exactly when some $x \ne 0$ gives $Ax = 0$.</li>
+<li><b>Gauss–Jordan:</b> row-reduce $[\,A \mid I\,]$ to $[\,I \mid A^{-1}\,]$.</li>
+</ul>
+<div class="worked"><b>Worked example.</b> $A = \begin{bmatrix}1&3\\2&7\end{bmatrix}$, $ad - bc = 7 - 6 = 1$, so $A^{-1} = \begin{bmatrix}7&-3\\-2&1\end{bmatrix}$. Check: $\begin{bmatrix}1&3\\2&7\end{bmatrix}\begin{bmatrix}7&-3\\-2&1\end{bmatrix} = \begin{bmatrix}1&0\\0&1\end{bmatrix}$ ✓<br><br>
+<b>In practice</b>, never compute $A^{-1}$ just to solve $Ax = b$; elimination is about three times cheaper and more accurate.</div>
+<p class="lands"><b>Teaching hook:</b> In graphics, rotating then scaling a sprite is $S R\,v$, not $R S\,v$ — non-commutativity on screen. In C, a row-major 2-D array makes the "by rows" view cache-friendly, which is the HPC blocking story.</p>`,
+      poll: { q: "Which way of multiplying matrices do your students know besides row · column?", opts: ["None, only row · column", "By columns", "Column × row (outer products)", "All four"] }
+    },
+    {
+      id: "la1t3", title: "Column space and null space",
+      video: { yt: "8o5Cmfpeo6g", src: "MIT 18.06 Linear Algebra (Spring 2010) · Lecture 6: Column Space and Nullspace · Gilbert Strang" },
+      notes: N`
+<p>A <b>subspace</b> is a set of vectors closed under addition and scalar multiplication (so it always contains $0$). Lines and planes <i>through the origin</i> are subspaces; a line not through the origin is not.</p>
+<ul>
+<li><b>Column space</b> $C(A)$: all combinations $Ax$ of the columns — a subspace of $\mathbb{R}^m$.</li>
+<li><b>Null space</b> $N(A)$: all $x$ with $Ax = 0$ — a subspace of $\mathbb{R}^n$.</li>
+<li>$Ax = b$ is solvable <b>if and only if</b> $b \in C(A)$.</li>
+<li>If $x_p$ is one solution, every solution is $x = x_p + x_n$ with $x_n \in N(A)$.</li>
+</ul>
+<div class="worked"><b>Worked example.</b>
+$$A = \begin{bmatrix}1&1&2\\2&1&3\\3&1&4\\4&1&5\end{bmatrix}$$
+Column 3 = column 1 + column 2, so only two columns are independent: $C(A)$ is a plane inside $\mathbb{R}^4$. The dependency gives the null space: $N(A)$ is the line through $(1, 1, -1)$. Check row 4: $4 + 1 - 5 = 0$ ✓<br>
+With 4 equations and 3 unknowns, $Ax = b$ is solvable only for the $b$ lying on that plane.</div>
+<p class="lands"><b>Teaching hook:</b> In machine learning, a feature that is the sum of two others adds a null-space direction: many weight vectors fit the data equally well, which is why regularisation is needed.</p>`,
+      poll: { q: "How do your students usually react to the word \"subspace\"?", opts: ["Comfortable", "They memorise the definition", "Confused without pictures", "Never met it formally"] }
+    },
+    {
+      id: "la1t4", title: "Independence, basis, dimension and rank",
+      video: { yt: "yjBerM5jWsc", src: "MIT 18.06 Linear Algebra (Spring 2010) · Lecture 9: Independence, Basis, and Dimension · Gilbert Strang" },
+      notes: N`
+<ul>
+<li>Vectors $v_1, \dots, v_k$ are <b>independent</b> if the only combination giving $0$ is the all-zero one. Equivalently, the matrix with these columns has $N = \{0\}$.</li>
+<li>Any $n + 1$ vectors in $\mathbb{R}^n$ are dependent.</li>
+<li>A <b>basis</b> of a space is an independent set that spans it. Every basis has the same size: the <b>dimension</b>.</li>
+<li><b>Rank</b> $r$ = number of pivots = $\dim C(A)$ = number of independent columns = number of independent rows.</li>
+</ul>
+<h4>The four fundamental subspaces of an $m \times n$ matrix of rank $r$</h4>
+<table class="mini"><thead><tr><th>Subspace</th><th>Lives in</th><th>Dimension</th></tr></thead><tbody>
+<tr><td>Column space $C(A)$</td><td>$\mathbb{R}^m$</td><td>$r$</td></tr>
+<tr><td>Row space $C(A^\top)$</td><td>$\mathbb{R}^n$</td><td>$r$</td></tr>
+<tr><td>Null space $N(A)$</td><td>$\mathbb{R}^n$</td><td>$n - r$</td></tr>
+<tr><td>Left null space $N(A^\top)$</td><td>$\mathbb{R}^m$</td><td>$m - r$</td></tr>
+</tbody></table>
+<p><b>Rank–nullity:</b> $r + \dim N(A) = n$. The row space and null space are orthogonal complements in $\mathbb{R}^n$.</p>
+<div class="worked"><b>Worked example.</b> Are $(1,2,3)$, $(4,5,6)$, $(7,8,9)$ independent? $2(4,5,6) - (1,2,3) = (7,8,9)$, so no: the rank is 2, the three vectors span only a plane, and $\det = 0$.</div>
+<p class="lands"><b>Teaching hook:</b> A movie-ratings matrix with 10,000 users × 2,000 movies may have effective rank 20 — tastes are driven by a few factors. That single fact is the idea behind recommender systems.</p>`,
+      poll: { q: "How do you explain rank in one sentence to students?", opts: ["Number of pivots", "Number of independent columns", "Dimension of the output space", "Amount of real information in the matrix"] }
+    }
+  ],
+  quiz: [
+    { q: N`In the column picture, the product $Ax$ is:`, o: ["A dot product of x with each column", "A combination of the columns of A with weights from x", "The intersection of the rows of A", "The transpose of A times x"], a: 1, e: "Ax = x₁(column 1) + x₂(column 2) + … — the central idea of the column picture." },
+    { q: N`Eliminating below the first pivot of $\begin{bmatrix}1&2\\3&8\end{bmatrix}$ gives a second pivot of:`, o: ["2", "5", "8", "−2"], a: 0, e: "Row 2 − 3 × Row 1 = (0, 8 − 6) = (0, 2)." },
+    { q: N`The inverse of $\begin{bmatrix}1&3\\2&7\end{bmatrix}$ is:`, o: [N`$\begin{bmatrix}7&3\\2&1\end{bmatrix}$`, N`$\begin{bmatrix}7&-3\\-2&1\end{bmatrix}$`, N`$\begin{bmatrix}1&-3\\-2&7\end{bmatrix}$`, N`$\begin{bmatrix}-7&3\\2&-1\end{bmatrix}$`], a: 1, e: "ad − bc = 1; swap the diagonal and negate the off-diagonal entries." },
+    { q: N`$(AB)^{-1}$ equals:`, o: [N`$A^{-1}B^{-1}$`, N`$B^{-1}A^{-1}$`, N`$(BA)^{-1}$ only if $A = B$`, N`$A^\top B^\top$`], a: 1, e: "(AB)(B⁻¹A⁻¹) = A(BB⁻¹)A⁻¹ = I; the order reverses." },
+    { q: "Multiplying a 20 × 30 matrix by a 30 × 10 matrix takes how many scalar multiplications?", o: ["600", "2,000", "6,000", "60,000"], a: 2, e: "m · n · p = 20 · 30 · 10 = 6,000." },
+    { q: N`$Ax = b$ has a solution exactly when:`, o: ["A is square", "b is in the column space of A", "b is in the null space of A", "A has more rows than columns"], a: 1, e: "Ax is always a combination of A's columns, so b must be one." },
+    { q: "A 3 × 5 matrix has rank 3. The dimension of its null space is:", o: ["0", "2", "3", "5"], a: 1, e: "Rank–nullity: n − r = 5 − 3 = 2." },
+    { q: "The vectors (1, 2, 3), (4, 5, 6) and (7, 8, 9):", o: ["Are independent and form a basis of ℝ³", "Are dependent; they span a plane", "Are dependent; they span a line", "Are orthogonal"], a: 1, e: "(7, 8, 9) = 2(4, 5, 6) − (1, 2, 3), and (1, 2, 3), (4, 5, 6) are not parallel, so the rank is 2." }
+  ]
+},
+
+{
+  id: 2, week: 1, code: "Tue 17 Nov", title: "Projections, determinants, eigenvalues and SVD",
+  lands: "Machine Learning · Deep Learning · Image Processing & CV · Big Data · Quantum Computing · EDA",
+  topics: [
+    {
+      id: "la2t1", title: "Projections and least squares",
+      video: { yt: "Y_Ac6KiQ1t0", src: "MIT 18.06 Linear Algebra (Spring 2010) · Lecture 15: Projections onto Subspaces · Gilbert Strang" },
+      notes: N`
+<p>When $Ax = b$ has no solution (more equations than unknowns, noisy data), find the $\hat x$ that makes $A\hat x$ as close to $b$ as possible. The answer is the <b>projection</b> of $b$ onto $C(A)$.</p>
+<ul>
+<li>Onto a line through $a$: $p = \dfrac{a^\top b}{a^\top a}\, a$. The error $e = b - p$ is perpendicular to $a$.</li>
+<li>Onto the column space of $A$: solve the <b>normal equations</b> $A^\top A\,\hat x = A^\top b$; then $p = A\hat x$ and the projection matrix is $P = A(A^\top A)^{-1}A^\top$.</li>
+<li>$P^2 = P$ (projecting twice changes nothing) and $P^\top = P$.</li>
+</ul>
+<div class="worked"><b>Worked example 1.</b> Project $b = (2, 3)$ onto $a = (1, 1)$: $a^\top b = 5$, $a^\top a = 2$, so $p = 2.5\,(1,1) = (2.5, 2.5)$ and $e = (-0.5, 0.5)$, with $a^\top e = 0$ ✓<br><br>
+<b>Worked example 2 (fitting a line).</b> Fit $y = C + Dt$ to the points $(1,1), (2,2), (3,2)$.<br>
+$A = \begin{bmatrix}1&1\\1&2\\1&3\end{bmatrix}$, $b = \begin{bmatrix}1\\2\\2\end{bmatrix}$, $A^\top A = \begin{bmatrix}3&6\\6&14\end{bmatrix}$, $A^\top b = \begin{bmatrix}5\\11\end{bmatrix}$.<br>
+Solving gives $D = \tfrac12$, $C = \tfrac23$: the best line is $y = \tfrac23 + \tfrac12 t$.</div>
+<p class="lands"><b>Teaching hook:</b> This is linear regression, the first algorithm in every Machine Learning course. "Minimise the squared error" and "drop a perpendicular onto the column space" are the same sentence.</p>`,
+      poll: { q: "How do you introduce least squares?", opts: ["Geometry (projection)", "Calculus (set the derivative to zero)", "Straight to the formula", "Through a regression example in Python"] }
+    },
+    {
+      id: "la2t2", title: "Determinants",
+      video: { yt: "srxexLishgY", src: "MIT 18.06 Linear Algebra (Spring 2010) · Lecture 18: Properties of Determinants · Gilbert Strang" },
+      notes: N`
+<p>The determinant is a single number that tells whether a square matrix is invertible and how it scales volume.</p>
+<ul>
+<li>$\det A = 0$ exactly when $A$ is singular. $|\det A|$ is the factor by which $A$ scales areas (2-D) or volumes (3-D).</li>
+<li>Swapping two rows flips the sign; adding a multiple of one row to another changes nothing.</li>
+<li>Triangular matrix: $\det$ = product of the diagonal. So $\det A = \pm$ (product of the pivots).</li>
+<li>$\det(AB) = \det A \cdot \det B$, &nbsp; $\det A^\top = \det A$, &nbsp; $\det A^{-1} = 1/\det A$.</li>
+<li>$\det(cA) = c^n \det A$ for an $n \times n$ matrix — a common exam trap.</li>
+</ul>
+<div class="worked"><b>Worked example.</b>
+$$\det\begin{bmatrix}2&1&0\\1&3&1\\0&1&2\end{bmatrix} = 2(3\cdot2 - 1\cdot1) - 1(1\cdot2 - 1\cdot0) + 0 = 10 - 2 = 8.$$
+<b>Cost warning:</b> cofactor expansion takes about $n!$ operations — for $n = 20$ that is $2.4 \times 10^{18}$. Elimination takes about $n^3/3$. Teach cofactors for $3 \times 3$ only.</div>
+<p class="lands"><b>Teaching hook:</b> The Jacobian determinant tells a graphics engine or a probability transformation how much area is stretched; $\det = 0$ means a dimension has been flattened away.</p>`,
+      poll: { q: "Do you warn students about the n! cost of cofactor expansion?", opts: ["Yes, always", "Sometimes", "No", "I'll start now"] }
+    },
+    {
+      id: "la2t3", title: "Eigenvalues and eigenvectors",
+      video: { yt: "cdZnhQjJu4I", src: "MIT 18.06 Linear Algebra (Spring 2010) · Lecture 21: Eigenvalues and Eigenvectors · Gilbert Strang" },
+      notes: N`
+<p>$Av = \lambda v$: the direction of $v$ survives the transformation and is only scaled by $\lambda$. Find $\lambda$ from $\det(A - \lambda I) = 0$, then $v$ from the null space of $A - \lambda I$.</p>
+<ul>
+<li>Checks: $\sum \lambda_i = \operatorname{trace}(A)$ and $\prod \lambda_i = \det A$.</li>
+<li>Symmetric matrices have real eigenvalues and orthogonal eigenvectors: $A = Q\Lambda Q^\top$.</li>
+<li>If $A = S\Lambda S^{-1}$ then $A^k = S\Lambda^k S^{-1}$: powers, recurrences and Markov chains become easy.</li>
+<li>Triangular matrices: the eigenvalues are the diagonal entries.</li>
+</ul>
+<div class="worked"><b>Worked example 1.</b> $A = \begin{bmatrix}2&1\\1&2\end{bmatrix}$: $(2 - \lambda)^2 - 1 = 0$ gives $\lambda = 1, 3$, with eigenvectors $(1, -1)$ and $(1, 1)$. Trace $4 = 1 + 3$, det $3 = 1 \times 3$ ✓<br><br>
+<b>Worked example 2 (Markov chain).</b> Each month 10% of students switch from Lab A to Lab B and 20% switch back: $M = \begin{bmatrix}0.9&0.2\\0.1&0.8\end{bmatrix}$. Eigenvalues: trace 1.7, det 0.70, so $\lambda = 1$ and $0.7$. The $\lambda = 1$ eigenvector gives the steady state $(2/3, 1/3)$; the $0.7^k$ part dies away.</div>
+<p class="lands"><b>Teaching hook:</b> Google's PageRank is the $\lambda = 1$ eigenvector of the web's link matrix — the same calculation as the two-lab example, with billions of pages.</p>`,
+      poll: { q: "Which eigenvector application would you use to motivate students?", opts: ["Google PageRank", "PCA / face recognition", "Markov chains (e.g. weather, lab switching)", "Vibrations and stability"] }
+    },
+    {
+      id: "la2t4", title: "Singular value decomposition",
+      video: { yt: "TX_vooSnhm8", src: "MIT 18.06 Linear Algebra (Spring 2010) · Lecture 29: Singular Value Decomposition · Gilbert Strang" },
+      notes: N`
+<p>Every $m \times n$ matrix — square or not, invertible or not — factors as
+$$A = U\Sigma V^\top = \sigma_1 u_1 v_1^\top + \sigma_2 u_2 v_2^\top + \dots + \sigma_r u_r v_r^\top$$
+with orthonormal columns in $U$ and $V$ and singular values $\sigma_1 \ge \sigma_2 \ge \dots \ge \sigma_r > 0$.</p>
+<ul>
+<li>The $\sigma_i$ are the square roots of the eigenvalues of $A^\top A$; the $v_i$ are its eigenvectors.</li>
+<li>Geometrically: rotate ($V^\top$), stretch along axes ($\Sigma$), rotate again ($U$).</li>
+<li>The number of non-zero $\sigma_i$ is the rank.</li>
+<li><b>Condition number</b> $\sigma_1/\sigma_r$ measures how much a linear solve amplifies rounding error.</li>
+</ul>
+<div class="worked"><b>Worked example.</b> $A = \begin{bmatrix}3&0\\4&5\end{bmatrix}$. $A^\top A = \begin{bmatrix}25&20\\20&25\end{bmatrix}$ has eigenvalues 45 and 5, so $\sigma_1 = \sqrt{45} = 3\sqrt5$ and $\sigma_2 = \sqrt5$. Check: $\sigma_1\sigma_2 = 15 = |\det A|$ ✓</div>
+<p class="lands"><b>Teaching hook:</b> The column × row view of multiplication (Day 1) is exactly the SVD sum: a matrix is a stack of rank-one layers, ordered by importance.</p>`,
+      poll: { q: "Is the SVD currently taught anywhere in your students' programme?", opts: ["Yes, in a maths course", "Yes, inside ML / data science", "Only mentioned", "Not at all"] }
+    },
+    {
+      id: "la2t5", title: "Low-rank approximation and PCA in computing",
+      video: { yt: "Y4f7K9XF04k", src: "MIT 18.065 (Spring 2018) · Lecture 7: Eckart–Young, the Closest Rank-k Matrix to A · Gilbert Strang" },
+      notes: N`
+<p><b>Eckart–Young theorem:</b> keeping the first $k$ terms of the SVD, $A_k = \sum_{i=1}^{k}\sigma_i u_i v_i^\top$, gives the best rank-$k$ approximation of $A$. No other rank-$k$ matrix is closer.</p>
+<ul>
+<li><b>Compression:</b> storage drops from $mn$ numbers to $k(m + n + 1)$.</li>
+<li><b>PCA:</b> centre the data (subtract column means), take the SVD; the $v_i$ are the principal directions and $\sigma_i^2/(n-1)$ are the variances along them.</li>
+<li><b>Explained variance</b> of component $i$ = $\lambda_i / \sum_j \lambda_j$. Keep components until the running total reaches about 90%.</li>
+<li><b>Recommenders:</b> a users × items rating matrix is approximated by a rank-$k$ product; the $k$ columns are latent "taste factors".</li>
+</ul>
+<div class="worked"><b>Worked example 1.</b> A 1000 × 1000 greyscale image at rank 50 needs $50(1000 + 1000 + 1) = 100{,}050$ numbers instead of $10^6$ — about 10× smaller.<br><br>
+<b>Worked example 2.</b> Covariance eigenvalues 4.2, 1.1, 0.5, 0.2 (total 6.0): the first two components explain $5.3/6.0 \approx 88\%$ of the variance, so 4-D data can be plotted in 2-D with little loss.</div>
+<p class="lands"><b>Where this goes next:</b> PCA in Exploratory Data Analytics and Machine Learning, eigenfaces in Image Processing & CV, latent factors in Big Data Analytics, and embeddings in Deep Learning and LLMs.</p>`,
+      poll: { q: "Would an SVD image-compression lab work for your students?", opts: ["Yes, in Python / NumPy", "Yes, as a classroom demo", "Not enough lab time", "Not relevant to my courses"] }
+    }
+  ],
+  quiz: [
+    { q: "The projection of b = (2, 3) onto the line through a = (1, 1) is:", o: ["(2, 3)", "(2.5, 2.5)", "(5, 5)", "(1, 1)"], a: 1, e: "p = (aᵀb / aᵀa) a = (5/2)(1, 1)." },
+    { q: N`The least-squares solution $\hat x$ of $Ax = b$ satisfies:`, o: [N`$A\hat x = b$`, N`$A^\top A\,\hat x = A^\top b$`, N`$AA^\top \hat x = b$`, N`$\hat x = A^{-1}b$`], a: 1, e: "The error b − Ax̂ must be perpendicular to every column of A: Aᵀ(b − Ax̂) = 0." },
+    { q: "The best-fit line y = C + Dt through (1, 1), (2, 2) and (3, 2) has slope D equal to:", o: ["1/3", "1/2", "2/3", "1"], a: 1, e: "AᵀA = [[3, 6], [6, 14]], Aᵀb = (5, 11) gives D = 1/2 and C = 2/3." },
+    { q: N`$\det\begin{bmatrix}2&1&0\\1&3&1\\0&1&2\end{bmatrix}$ equals:`, o: ["6", "8", "10", "12"], a: 1, e: "2(6 − 1) − 1(2 − 0) + 0 = 8." },
+    { q: "A 3 × 3 matrix A has det A = 5. Then det(2A) is:", o: ["10", "20", "40", "25"], a: 2, e: "det(cA) = cⁿ det A = 2³ × 5 = 40." },
+    { q: N`The eigenvalues of the Markov matrix $\begin{bmatrix}0.9&0.2\\0.1&0.8\end{bmatrix}$ are:`, o: ["1 and 0.7", "0.9 and 0.8", "1 and 0.3", "1.7 and 0"], a: 0, e: "Trace 1.7 and determinant 0.70; the pair adding to 1.7 and multiplying to 0.70 is 1 and 0.7." },
+    { q: "The singular values of A are:", o: ["The eigenvalues of A", "The diagonal entries of A", N`Square roots of the eigenvalues of $A^\top A$`, "The pivots of A"], a: 2, e: "AᵀA = VΣ²Vᵀ, so its eigenvalues are σᵢ²." },
+    { q: "Covariance eigenvalues are 4.2, 1.1, 0.5 and 0.2. The first two principal components explain about:", o: ["70%", "80%", "88%", "95%"], a: 2, e: "(4.2 + 1.1) / 6.0 ≈ 0.883." }
+  ]
+}
+  ]
+};
+
+</script>
+<script>
+/* =====================================================================
+   SETTINGS — change these before hosting
+   ===================================================================== */
+const CONFIG = {
+  SHEET_URL: "",        // Google Apps Script web-app URL (see apps-script/Code.gs). Empty = scores stay in this browser only.
+  ADMIN_PIN: "2026",    // PIN for the coordinator view
+  PASS_PERCENT: 60,     // pass mark for a day quiz
+  LOCK_QUIZ_UNTIL_POLLS_DONE: true  // the day quiz opens only after every topic poll that day is answered
+};
+
+/* ---------- storage ---------- */
+const KEY = "fmb-la:v1";
+const REC = "fmb-la:records";
+function readJSON(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } }
+function writeJSON(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+let S = readJSON(KEY, null) || { user:null, users:{}, overrides:{} };
+function U(){ // per-user progress bucket
+  if(!S.user) return { polls:{}, watched:{}, attempts:[] };
+  const id = S.user.emp;
+  S.users[id] = S.users[id] || { polls:{}, watched:{}, attempts:[] };
+  return S.users[id];
+}
+function save(){ writeJSON(KEY, S); }
+function allRecords(){ return readJSON(REC, []); }
+function addRecord(r){ const a = allRecords(); a.push(r); writeJSON(REC, a); }
+
+/* ---------- remote (Google Sheets) ---------- */
+function send(payload){
+  if(!CONFIG.SHEET_URL) return Promise.resolve(false);
+  return fetch(CONFIG.SHEET_URL, { method:"POST", mode:"no-cors", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body: JSON.stringify(payload) })
+    .then(() => true).catch(() => false);
+}
+function fetchTally(pollId){
+  if(!CONFIG.SHEET_URL) return Promise.resolve(null);
+  return fetch(CONFIG.SHEET_URL + "?action=tally&poll=" + encodeURIComponent(pollId))
+    .then(r => r.json()).then(j => j && Array.isArray(j.counts) ? j.counts : null).catch(() => null);
+}
+
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const DAYS = COURSE.days;
+const dayById = id => DAYS.find(d => d.id === id);
+function toast(msg){ const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 2600); }
+function math(el){
+  if(window.renderMathInElement){
+    try{ renderMathInElement(el, { delimiters:[{left:"$$",right:"$$",display:true},{left:"$",right:"$",display:false}], throwOnError:false }); }catch(e){}
+  } else { setTimeout(() => window.renderMathInElement && math(el), 400); }
+}
+function topicDone(t){ return U().polls[t.id] !== undefined; }
+function dayTopicsDone(d){ return d.topics.filter(topicDone).length; }
+function bestAttempt(d){
+  const a = U().attempts.filter(x => x.day === d.id);
+  return a.length ? a.reduce((m, x) => x.pct > m.pct ? x : m) : null;
+}
+function dayComplete(d){ const b = bestAttempt(d); return dayTopicsDone(d) === d.topics.length && b && b.pct >= CONFIG.PASS_PERCENT; }
+function ytId(input){
+  const s = String(input).trim();
+  const m = s.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([A-Za-z0-9_-]{11})/);
+  if(m) return m[1];
+  return /^[A-Za-z0-9_-]{11}$/.test(s) ? s : null;
+}
+
+/* ---------- chrome ---------- */
+function renderWho(){
+  const w = $("#who");
+  if(!S.user){ w.innerHTML = ""; return; }
+  const total = U().attempts.length ? DAYS.reduce((sum, d) => { const b = bestAttempt(d); return sum + (b ? b.score : 0); }, 0) : 0;
+  const max = DAYS.reduce((s, d) => s + d.quiz.length, 0);
+  w.innerHTML = `<span><strong>${esc(S.user.name)}</strong> · ${esc(S.user.emp)}</span>
+    <span class="mono" title="Sum of best quiz scores">${total}/${max}</span>
+    <button class="btn ghost small" id="switchUser">Switch user</button>`;
+  $("#switchUser").onclick = () => { S.user = null; save(); showLogin(); };
+}
+function renderRail(){
+  const cur = currentDay();
+  let html = "";
+  COURSE.groups.forEach(g => { const wk = g.week;
+    html += `<h3 class="eyebrow">${esc(g.rail)}</h3>`;
+    DAYS.filter(d => d.week === wk).forEach(d => {
+      const b = bestAttempt(d);
+      html += `<a class="daylink ${cur === d.id ? "active" : ""} ${dayComplete(d) ? "done" : ""}" href="#day-${d.id}">
+        <span class="num">${String(d.id).padStart(2, "0")}</span>
+        <span class="t">${esc(d.title)}<small>${esc(d.code)} · ${dayTopicsDone(d)}/${d.topics.length} topics</small></span>
+        <span class="score">${b ? b.score + "/" + b.total : ""}</span></a>`;
+    });
+  });
+  $("#railDays").innerHTML = html;
+}
+
+/* ---------- router ---------- */
+function currentDay(){ const m = location.hash.match(/^#day-(\d+)/); return m ? +m[1] : null; }
+function route(){
+  const h = location.hash || "#home";
+  renderWho(); renderRail();
+  let m;
+  if(h === "#admin") return viewAdmin();
+  if((m = h.match(/^#day-(\d+)-quiz$/))) return viewQuiz(dayById(+m[1]));
+  if((m = h.match(/^#day-(\d+)-t(\d+)$/))) return viewDay(dayById(+m[1]), +m[2] - 1);
+  if((m = h.match(/^#day-(\d+)$/))) return viewDay(dayById(+m[1]), firstOpenTopic(dayById(+m[1])));
+  return viewHome();
+}
+function firstOpenTopic(d){ if(!d) return 0; const i = d.topics.findIndex(t => !topicDone(t)); return i < 0 ? 0 : i; }
+function go(h){ if(location.hash === h) route(); else location.hash = h; window.scrollTo(0, 0); }
+
+/* ---------- home ---------- */
+function viewHome(){
+  const topicsAll = DAYS.reduce((s, d) => s + d.topics.length, 0);
+  const topicsDone = DAYS.reduce((s, d) => s + dayTopicsDone(d), 0);
+  const passed = DAYS.filter(d => { const b = bestAttempt(d); return b && b.pct >= CONFIG.PASS_PERCENT; }).length;
+  const next = DAYS.find(d => !dayComplete(d)) || DAYS[0];
+  let html = `<section class="hero">
+    <div><div class="eyebrow">${esc(COURSE.institution)}</div>
+      <h1>${esc(COURSE.title)}</h1>
+      <p>${esc(COURSE.subtitle)}. Each topic runs <b>watch → read → vote</b>; each day ends with a recorded quiz (pass mark ${CONFIG.PASS_PERCENT}%).</p>
+      <p style="margin-top:14px"><a class="btn primary" href="#day-${next.id}">${topicsDone ? "Continue" : "Start"} with Day ${next.id}: ${esc(next.title)}</a></p></div>
+    <div class="stats">
+      <div class="stat"><b>${topicsDone}/${topicsAll}</b><span>topics done</span></div>
+      <div class="stat"><b>${passed}/${DAYS.length}</b><span>quizzes passed</span></div>
+      <div class="stat"><b>${U().attempts.length}</b><span>quiz attempts</span></div>
+    </div></section>`;
+  COURSE.groups.forEach(g => { const wk = g.week;
+    html += `<section><div class="eyebrow" style="margin-bottom:10px">${esc(g.home)}</div><div class="weekgrid">`;
+    DAYS.filter(d => d.week === wk).forEach(d => {
+      const done = dayTopicsDone(d), b = bestAttempt(d);
+      html += `<a class="daycard" href="#day-${d.id}">
+        <span class="eyebrow">Day ${d.id} · ${esc(d.code)}</span>
+        <h3>${esc(d.title)}</h3>
+        <p>${esc(d.lands)}</p>
+        <div class="bar"><i style="width:${Math.round(done / d.topics.length * 100)}%"></i></div>
+        <div class="cardfoot"><span>${done}/${d.topics.length} topics</span><span class="best">${b ? "Best " + b.score + "/" + b.total : "Quiz not taken"}</span></div></a>`;
+    });
+    html += `</div></section>`;
+  });
+  $("#view").innerHTML = html;
+}
+
+/* ---------- day / topic ---------- */
+function stepsBar(d, activeIdx, quizActive){
+  let s = `<nav class="steps" aria-label="Topics">`;
+  d.topics.forEach((t, i) => {
+    s += `<a class="step ${topicDone(t) ? "done" : ""} ${!quizActive && i === activeIdx ? "active" : ""}" href="#day-${d.id}-t${i + 1}"><span class="dot"></span>${i + 1}. ${esc(t.title)}</a>`;
+  });
+  const b = bestAttempt(d);
+  s += `<a class="step quiz ${b ? "done" : ""} ${quizActive ? "active" : ""}" href="#day-${d.id}-quiz"><span class="dot"></span>Day ${d.id} quiz${b ? " · " + b.score + "/" + b.total : ""}</a></nav>`;
+  return s;
+}
+function dayHead(d){
+  return `<header class="dayhead"><div class="eyebrow">Day ${d.id} · ${esc(d.code)}</div>
+    <h1>${esc(d.title)}</h1><div class="lands">Feeds: ${esc(d.lands)}</div></header>`;
+}
+function videoBlock(t){
+  const ov = S.overrides[t.id];
+  const id = ov || (t.video && t.video.yt);
+  const isAdmin = sessionStorage.getItem("fmb:admin") === "1";
+  const overrideUI = isAdmin ? `<div class="override" style="padding:0 16px 12px">
+      <label for="ov-${t.id}">Coordinator: pin a different YouTube video</label>
+      <input id="ov-${t.id}" placeholder="Paste a YouTube link" value="${ov ? "https://youtu.be/" + ov : ""}">
+      <button class="btn small" data-ov="${t.id}">Save</button>${ov ? `<button class="btn small ghost" data-ovclear="${t.id}">Reset</button>` : ""}</div>` : "";
+  if(id){
+    const src = ov ? "Pinned by coordinator" : t.video.src;
+    return `<div class="video"><iframe src="https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1" title="${esc(t.title)}" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
+      <div class="vmeta"><span class="src">${esc(src)}</span>
+        <a href="https://www.youtube.com/watch?v=${id}" target="_blank" rel="noopener">Open on YouTube ↗</a>
+        <button class="btn small" id="markWatched">${U().watched[t.id] ? "Watched ✓" : "Mark as watched"}</button></div>${overrideUI}`;
+  }
+  const q = encodeURIComponent(t.video.search);
+  return `<div class="vsearch"><p><b>No lecture is pinned for this topic yet.</b> Pick one from NPTEL or YouTube, watch it, then continue. Your coordinator can pin the chosen video here for everyone.</p>
+    <div class="row"><a class="btn primary" target="_blank" rel="noopener" href="https://www.youtube.com/results?search_query=${q}">Search YouTube ↗</a>
+    <a class="btn" target="_blank" rel="noopener" href="https://nptel.ac.in/courses">Browse NPTEL ↗</a>
+    <button class="btn" id="markWatched">${U().watched[t.id] ? "Watched ✓" : "Mark as watched"}</button></div></div>${overrideUI}`;
+}
+function viewDay(d, idx){
+  if(!d) return go("#home");
+  idx = Math.max(0, Math.min(idx || 0, d.topics.length - 1));
+  const t = d.topics[idx];
+  const vote = U().polls[t.id];
+  let html = dayHead(d) + stepsBar(d, idx, false) + `<article class="topic">
+    <div><div class="eyebrow">Topic ${idx + 1} of ${d.topics.length}</div><h2>${esc(t.title)}</h2></div>
+    <section class="phase"><header><span class="n">1</span><h3>Watch</h3><span class="right">${U().watched[t.id] ? "Watched" : "Lecture video"}</span></header>${videoBlock(t)}</section>
+    <section class="phase"><header><span class="n">2</span><h3>Read</h3><span class="right">Study material</span></header><div class="body"><div class="notes" id="notes">${t.notes}</div></div></section>
+    <section class="phase"><header><span class="n">3</span><h3>Vote</h3><span class="right">${vote !== undefined ? "Your vote is recorded" : "Poll"}</span></header>
+      <div class="body poll"><h4>${esc(t.poll.q)}</h4><div class="opts" id="opts"></div><div class="pollnote" id="pollnote"></div></div></section>
+    <div class="navrow">
+      ${idx > 0 ? `<a class="btn" href="#day-${d.id}-t${idx}">← ${esc(d.topics[idx - 1].title)}</a>` : `<span></span>`}
+      ${idx < d.topics.length - 1 ? `<a class="btn primary" href="#day-${d.id}-t${idx + 2}">Next: ${esc(d.topics[idx + 1].title)} →</a>` : `<a class="btn primary" href="#day-${d.id}-quiz">Go to the Day ${d.id} quiz →</a>`}
+    </div></article>`;
+  $("#view").innerHTML = html;
+  math($("#notes"));
+  const mw = $("#markWatched");
+  if(mw) mw.onclick = () => { U().watched[t.id] = Date.now(); save(); mw.textContent = "Watched ✓"; };
+  document.querySelectorAll("[data-ov]").forEach(b => b.onclick = () => {
+    const v = ytId($("#ov-" + b.dataset.ov).value);
+    if(!v){ toast("That doesn't look like a YouTube link."); return; }
+    S.overrides[b.dataset.ov] = v; save(); toast("Video pinned on this browser."); route();
+  });
+  document.querySelectorAll("[data-ovclear]").forEach(b => b.onclick = () => { delete S.overrides[b.dataset.ovclear]; save(); route(); });
+  renderPoll(t);
+}
+function localTally(t){
+  const counts = t.poll.opts.map(() => 0);
+  Object.values(S.users).forEach(u => { const v = u.polls[t.id]; if(v !== undefined && counts[v] !== undefined) counts[v]++; });
+  return counts;
+}
+function renderPoll(t, remote){
+  const vote = U().polls[t.id];
+  const counts = remote || localTally(t);
+  const total = counts.reduce((a, b) => a + b, 0);
+  $("#opts").innerHTML = t.poll.opts.map((o, i) => {
+    const pct = total ? Math.round(counts[i] / total * 100) : 0;
+    return `<button class="opt ${vote === i ? "mine" : ""}" data-i="${i}" type="button">
+      <span class="fill" style="width:${vote !== undefined ? pct : 0}%"></span>
+      <span>${esc(o)}</span>${vote !== undefined ? `<span class="pct">${pct}% · ${counts[i]}</span>` : ""}</button>`;
+  }).join("");
+  $("#pollnote").textContent = vote === undefined ? "Pick one option. You can change your vote later."
+    : remote ? `${total} votes from all faculty so far.` : CONFIG.SHEET_URL ? "Loading results from all faculty…" : `${total} vote${total === 1 ? "" : "s"} on this computer. Connect the Google Sheet to see everyone's votes.`;
+  document.querySelectorAll(".opt").forEach(b => b.onclick = () => {
+    const i = +b.dataset.i, prev = U().polls[t.id];
+    U().polls[t.id] = i; save();
+    send({ type:"poll", poll:t.id, topic:t.title, option:i, optionText:t.poll.opts[i], previous: prev === undefined ? "" : prev, name:S.user.name, emp:S.user.emp, dept:S.user.dept, time:new Date().toISOString() });
+    renderPoll(t); renderRail();
+    if(CONFIG.SHEET_URL) setTimeout(() => fetchTally(t.id).then(c => { if(c && location.hash.includes("-t") && document.getElementById("opts")) renderPoll(t, c); }), 1200);
+  });
+  if(vote !== undefined && CONFIG.SHEET_URL && !remote) fetchTally(t.id).then(c => { if(c && document.getElementById("opts")) renderPoll(t, c); });
+}
+
+/* ---------- quiz ---------- */
+function viewQuiz(d){
+  if(!d) return go("#home");
+  const missing = d.topics.filter(t => !topicDone(t));
+  const attempts = U().attempts.filter(a => a.day === d.id);
+  let html = dayHead(d) + stepsBar(d, -1, true);
+  if(CONFIG.LOCK_QUIZ_UNTIL_POLLS_DONE && missing.length){
+    html += `<div class="locked"><h3>The Day ${d.id} quiz opens once every topic is finished</h3>
+      <p class="attempts">Answer the poll at the end of these topics first:</p>
+      <ul>${missing.map(t => `<li><a href="#day-${d.id}-t${d.topics.indexOf(t) + 1}">${esc(t.title)}</a></li>`).join("")}</ul></div>`;
+    $("#view").innerHTML = html; return;
+  }
+  html += `<form id="quizForm" class="panel" novalidate>
+    <div class="row" style="justify-content:space-between"><h3>Day ${d.id} quiz · ${d.quiz.length} questions</h3>
+    <span class="attempts">${attempts.length ? `Attempt ${attempts.length + 1} · best so far ${bestAttempt(d).score}/${d.quiz.length}` : "First attempt"}</span></div>`;
+  d.quiz.forEach((q, qi) => {
+    html += `<div class="q" id="q${qi}"><div class="qn">Question ${qi + 1}</div><h4>${q.q}</h4>
+      ${q.o.map((o, oi) => `<label for="q${qi}o${oi}"><input type="radio" name="q${qi}" id="q${qi}o${oi}" value="${oi}"><span>${o}</span></label>`).join("")}
+      <div class="explain" hidden></div></div>`;
+  });
+  html += `<div class="err" id="quizErr"></div><div class="row"><button class="btn primary" type="submit">Submit answers</button></div></form><div id="quizResult"></div>`;
+  $("#view").innerHTML = html;
+  math($("#quizForm"));
+  $("#quizForm").onsubmit = e => {
+    e.preventDefault();
+    const answers = d.quiz.map((q, qi) => { const c = document.querySelector(`input[name="q${qi}"]:checked`); return c ? +c.value : null; });
+    const blank = answers.filter(a => a === null).length;
+    if(blank){ $("#quizErr").textContent = `Answer all questions before submitting (${blank} left).`; return; }
+    gradeQuiz(d, answers);
+  };
+}
+function gradeQuiz(d, answers){
+  const score = d.quiz.reduce((s, q, i) => s + (answers[i] === q.a ? 1 : 0), 0);
+  const total = d.quiz.length, pct = Math.round(score / total * 100);
+  const attemptNo = U().attempts.filter(a => a.day === d.id).length + 1;
+  const rec = { type:"quiz", day:d.id, dayTitle:d.title, score, total, pct, passed: pct >= CONFIG.PASS_PERCENT, attempt:attemptNo,
+    answers:answers.join(""), name:S.user.name, emp:S.user.emp, dept:S.user.dept, courses:S.user.courses || "", time:new Date().toISOString() };
+  U().attempts.push(rec); save(); addRecord(rec);
+  // show review
+  d.quiz.forEach((q, qi) => {
+    const box = $("#q" + qi);
+    box.querySelectorAll("input").forEach(i => i.disabled = true);
+    box.querySelectorAll("label").forEach((l, oi) => { if(oi === q.a) l.classList.add("right"); else if(oi === answers[qi]) l.classList.add("wrong"); });
+    const ex = box.querySelector(".explain"); ex.hidden = false;
+    ex.innerHTML = `${answers[qi] === q.a ? '<b class="ok">Correct.</b>' : '<b class="no">Not quite.</b>'} ${esc(q.e)}`;
+  });
+  $("#quizForm button[type=submit]").remove();
+  const resBox = $("#quizResult");
+  resBox.innerHTML = `<div class="result"><div class="ring" style="--p:${pct}"><span>${score}/${total}</span></div>
+    <div><span class="badge ${rec.passed ? "pass" : "fail"}">${rec.passed ? "Passed" : "Below pass mark"}</span>
+    <h3 style="margin:6px 0 4px">${pct}% on attempt ${attemptNo}</h3>
+    <p class="attempts" id="saveNote">Saved on this computer${CONFIG.SHEET_URL ? "; sending to the coordinator's sheet…" : "."}</p>
+    <div class="row" style="margin-top:8px"><a class="btn" href="#day-${d.id}-quiz" id="retake">Retake</a>
+    ${dayById(d.id + 1) ? `<a class="btn primary" href="#day-${d.id + 1}">Day ${d.id + 1}: ${esc(dayById(d.id + 1).title)} →</a>` : `<a class="btn primary" href="#home">Back to overview</a>`}</div></div></div>`;
+  $("#retake").onclick = e => { e.preventDefault(); viewQuiz(d); window.scrollTo(0, 0); };
+  send(rec).then(ok => { const n = $("#saveNote"); if(n && CONFIG.SHEET_URL) n.textContent = ok ? "Saved on this computer and sent to the coordinator's sheet." : "Saved on this computer. Could not reach the coordinator's sheet; ask the coordinator to collect the CSV."; });
+  renderRail(); renderWho();
+  resBox.scrollIntoView({ behavior:"smooth", block:"center" });
+}
+
+/* ---------- admin ---------- */
+function viewAdmin(){
+  if(sessionStorage.getItem("fmb:admin") !== "1"){
+    $("#view").innerHTML = `<form class="panel" id="pinForm" style="max-width:380px" novalidate><h3>Coordinator view</h3>
+      <p>Enter the coordinator PIN set in the file's settings.</p>
+      <div class="field"><label for="pin">PIN</label><input id="pin" type="password" inputmode="numeric" autocomplete="off"></div>
+      <div class="err" id="pinErr"></div><button class="btn primary" type="submit">Open</button></form>`;
+    $("#pinForm").onsubmit = e => { e.preventDefault();
+      if($("#pin").value === CONFIG.ADMIN_PIN){ sessionStorage.setItem("fmb:admin", "1"); viewAdmin(); }
+      else $("#pinErr").textContent = "That PIN is not correct."; };
+    return;
+  }
+  const recs = allRecords();
+  const people = {};
+  recs.forEach(r => { const p = people[r.emp] = people[r.emp] || { name:r.name, emp:r.emp, dept:r.dept, best:{} };
+    if(!p.best[r.day] || r.score > p.best[r.day].score) p.best[r.day] = r; });
+  const plist = Object.values(people);
+  let html = `<header class="dayhead"><div class="eyebrow">Coordinator view</div><h1>Scores and polls</h1></header>
+    <div class="panel"><h3>Score recording</h3>
+      <p class="status ${CONFIG.SHEET_URL ? "ok" : "off"}">${CONFIG.SHEET_URL ? "Connected to Google Sheets: every quiz attempt and poll vote is also sent to the sheet." : "Not connected to Google Sheets. Scores below are only those taken on this computer. Set SHEET_URL in the file to collect everyone's scores in one place."}</p>
+      <div class="row"><button class="btn primary" id="csvBest">Download best scores (CSV)</button><button class="btn" id="csvAll">Download all attempts (CSV)</button>
+      <button class="btn ghost" id="clearBtn">Clear records on this computer</button><button class="btn ghost" id="logout">Leave coordinator view</button></div>
+      <div class="err" id="clearMsg"></div></div>
+    <section><div class="eyebrow" style="margin-bottom:8px">Best score per faculty member and day · ${plist.length} people · ${recs.length} attempts</div>
+    <div class="tablewrap"><table class="data"><thead><tr><th>Name</th><th>Emp ID</th>${DAYS.map(d => `<th title="${esc(d.title)}">D${d.id}</th>`).join("")}<th>Total</th><th>Passed</th></tr></thead><tbody>`;
+  if(!plist.length) html += `<tr><td colspan="${DAYS.length + 4}" style="color:var(--muted)">No quiz attempts recorded on this computer yet. They appear here as soon as someone submits a day quiz.</td></tr>`;
+  plist.sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
+    let tot = 0, pass = 0;
+    html += `<tr><td>${esc(p.name)}</td><td class="mono">${esc(p.emp)}</td>` + DAYS.map(d => { const r = p.best[d.id]; if(!r) return `<td class="num">–</td>`; tot += r.score; if(r.passed) pass++; return `<td class="num">${r.score}</td>`; }).join("") + `<td class="num">${tot}</td><td class="num">${pass}/${DAYS.length}</td></tr>`;
+  });
+  html += `</tbody></table></div></section>
+    <section><div class="eyebrow" style="margin-bottom:8px">Poll results on this computer</div><div class="tablewrap"><table class="data"><thead><tr><th>Day</th><th>Topic poll</th><th>Leading answer</th><th>Votes</th></tr></thead><tbody>`;
+  DAYS.forEach(d => d.topics.forEach(t => {
+    const c = localTally(t), tot = c.reduce((a, b) => a + b, 0), top = c.indexOf(Math.max(...c));
+    html += `<tr><td class="mono">D${d.id}</td><td>${esc(t.poll.q)}</td><td>${tot ? esc(t.poll.opts[top]) + " (" + Math.round(c[top] / tot * 100) + "%)" : "–"}</td><td class="num">${tot}</td></tr>`;
+  }));
+  html += `</tbody></table></div></section>
+    <div class="panel"><h3>Pinned videos</h3><p>Open any topic while in coordinator view to paste a different YouTube link. Pins are saved in this browser; to make one permanent for everyone, copy the list below into the <code>yt</code> field of that topic in the file.</p>
+    <pre class="mono" style="margin:0;white-space:pre-wrap;font-size:12.5px">${Object.keys(S.overrides).length ? esc(JSON.stringify(S.overrides, null, 2)) : "No videos pinned yet."}</pre></div>`;
+  $("#view").innerHTML = html;
+  $("#csvBest").onclick = () => downloadCSV("best-scores.csv", ["Name","Emp ID","Dept", ...DAYS.map(d => "Day " + d.id), "Total", "Days passed"],
+    plist.map(p => { let tot = 0, pass = 0; const cells = DAYS.map(d => { const r = p.best[d.id]; if(!r) return ""; tot += r.score; if(r.passed) pass++; return r.score; }); return [p.name, p.emp, p.dept, ...cells, tot, pass]; }));
+  $("#csvAll").onclick = () => downloadCSV("all-attempts.csv", ["Time","Name","Emp ID","Dept","Courses","Day","Day title","Attempt","Score","Total","Percent","Passed","Answers"],
+    recs.map(r => [r.time, r.name, r.emp, r.dept, r.courses, r.day, r.dayTitle, r.attempt, r.score, r.total, r.pct, r.passed ? "Yes" : "No", r.answers]));
+  $("#logout").onclick = () => { sessionStorage.removeItem("fmb:admin"); go("#home"); };
+  const cb = $("#clearBtn");
+  cb.onclick = () => {
+    if(cb.dataset.armed){ writeJSON(REC, []); S.users = {}; save(); viewAdmin(); toast("Records cleared on this computer."); return; }
+    cb.dataset.armed = "1"; cb.textContent = "Click again to clear all records"; $("#clearMsg").textContent = "This removes every score and vote stored on this computer. It cannot be undone.";
+  };
+}
+function downloadCSV(name, header, rows){
+  const q = v => { const s = String(v ?? ""); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const csv = [header, ...rows].map(r => r.map(q).join(",")).join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type:"text/csv" }));
+  a.download = name; document.body.appendChild(a); a.click(); a.remove();
+}
+
+/* ---------- login ---------- */
+function showLogin(){
+  $("#loginScrim").hidden = false; $("#fName").focus();
+}
+$("#loginForm").onsubmit = e => {
+  e.preventDefault();
+  const name = $("#fName").value.trim(), emp = $("#fEmp").value.trim();
+  if(!name || !emp){ $("#loginErr").textContent = "Enter your name and employee ID."; return; }
+  S.user = { name, emp, dept:$("#fDept").value.trim() || "CSE", courses:$("#fCourses").value.trim() };
+  save(); $("#loginScrim").hidden = true;
+  send({ type:"login", name, emp, dept:S.user.dept, courses:S.user.courses, time:new Date().toISOString() });
+  route();
+};
+
+/* ---------- boot ---------- */
+document.title = COURSE.title;
+$("#brandTitle").textContent = COURSE.title;
+window.addEventListener("hashchange", () => { route(); window.scrollTo(0, 0); });
+route();
+if(!S.user) showLogin();
+</script>
+</body>
+</html>

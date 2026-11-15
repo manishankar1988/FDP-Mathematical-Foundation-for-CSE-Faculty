@@ -1,0 +1,1473 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mathematics Prerequisite Programme</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<style>
+/* Layout: lecture-hall course player — left rail of 12 days, right pane with Watch → Read → Vote per topic, day quiz at the end. */
+:root{
+  --bg:#f4f6f5; --surface:#ffffff; --sunken:#e9eeec; --ink:#14211f; --muted:#56635f; --line:#d5dddb;
+  --accent:#0d6b5c; --accent-ink:#ffffff; --accent-soft:#d9ece8; --brass:#9a6412; --brass-soft:#f4e6cc;
+  --good:#1f7a3d; --good-soft:#dcefe2; --bad:#b4372b; --bad-soft:#f6dedb;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --serif:"IBM Plex Serif",Georgia,"Times New Roman",serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1514; --surface:#151f1d; --sunken:#1b2725; --ink:#e2ebe8; --muted:#9aa9a5; --line:#2b3a37;
+  --accent:#43bfa6; --accent-ink:#06201b; --accent-soft:#163a33; --brass:#e1a94c; --brass-soft:#3a2c14;
+  --good:#5cc983; --good-soft:#163222; --bad:#ef7d70; --bad-soft:#3b1b18; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#0e1514; --surface:#151f1d; --sunken:#1b2725; --ink:#e2ebe8; --muted:#9aa9a5; --line:#2b3a37;
+  --accent:#43bfa6; --accent-ink:#06201b; --accent-soft:#163a33; --brass:#e1a94c; --brass-soft:#3a2c14;
+  --good:#5cc983; --good-soft:#163222; --bad:#ef7d70; --bad-soft:#3b1b18; color-scheme:dark;}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
+[hidden]{display:none!important}
+a{color:var(--accent)}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3,h4{text-wrap:balance;line-height:1.25;margin:0}
+.mono{font-family:var(--mono)}
+.eyebrow{font:500 11.5px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+
+/* top bar */
+.topbar{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--line);
+  padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);min-width:0}
+.brand-mark{width:34px;height:34px;border-radius:8px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font:600 15px var(--mono);flex:none}
+.brand b{display:block;font-size:15px}
+.brand small{display:block;color:var(--muted);font-size:12px}
+.topbar .spacer{flex:1}
+.who{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.who strong{color:var(--ink);font-weight:600}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 12px;cursor:pointer;font-weight:500;font-size:14px;text-decoration:none;color:var(--ink)}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+.btn.ghost:hover{color:var(--ink)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn.small{padding:4px 9px;font-size:13px}
+
+/* shell */
+.shell{display:grid;grid-template-columns:290px minmax(0,1fr);min-height:calc(100vh - 56px)}
+.rail{border-right:1px solid var(--line);background:var(--surface);padding:18px 14px 40px;position:sticky;top:56px;align-self:start;max-height:calc(100vh - 56px);overflow:auto}
+.rail h3{margin:14px 8px 8px}
+.daylink{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px;border-radius:8px;text-decoration:none;color:var(--ink)}
+.daylink:hover{background:var(--sunken)}
+.daylink.active{background:var(--accent-soft)}
+.daylink .num{font:600 12px var(--mono);color:var(--muted);text-align:center;border:1px solid var(--line);border-radius:6px;padding:5px 0}
+.daylink.done .num{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.daylink .t{font-size:13.5px;line-height:1.3;min-width:0}
+.daylink .t small{display:block;color:var(--muted);font-size:11.5px;font-family:var(--mono)}
+.daylink .score{font:500 12px var(--mono);color:var(--brass)}
+.rail .admin-link{display:block;margin:22px 8px 0;font-size:13px;color:var(--muted)}
+main{min-width:0;padding:24px max(16px,env(safe-area-inset-right,0px)) 64px max(16px,env(safe-area-inset-left,0px))}
+.wrap{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+
+/* home */
+.hero{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:20px;align-items:end;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.hero h1{font-size:30px;letter-spacing:-.01em}
+.hero p{color:var(--muted);margin:8px 0 0;max-width:62ch}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px}
+.stat b{display:block;font:600 22px var(--mono);font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--muted)}
+.weekgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.daycard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:8px}
+.daycard:hover{border-color:var(--accent)}
+.daycard h3{font-size:16px}
+.daycard p{margin:0;font-size:12.5px;color:var(--muted)}
+.bar{height:6px;border-radius:3px;background:var(--sunken);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent)}
+.cardfoot{display:flex;justify-content:space-between;font:500 12px var(--mono);color:var(--muted)}
+.cardfoot .best{color:var(--brass)}
+
+/* day */
+.dayhead{display:flex;flex-direction:column;gap:6px}
+.dayhead h1{font-size:26px}
+.dayhead .lands{font-size:13px;color:var(--muted)}
+.steps{display:flex;gap:6px;flex-wrap:wrap}
+.step{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer;display:flex;gap:7px;align-items:center;text-decoration:none;color:var(--ink)}
+.step .dot{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.step.done .dot{background:var(--accent)}
+.step.active{border-color:var(--accent);background:var(--accent-soft);font-weight:600}
+.step.quiz{border-style:dashed}
+.step.quiz.done .dot{background:var(--brass)}
+
+.topic{display:flex;flex-direction:column;gap:18px}
+.topic h2{font-size:22px}
+.phase{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.phase>header{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--sunken)}
+.phase>header .n{font:600 12px var(--mono);width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--accent-ink)}
+.phase>header h3{font-size:14px;font-weight:600}
+.phase>header .right{margin-left:auto;font-size:12px;color:var(--muted)}
+.phase .body{padding:16px}
+.video{position:relative;width:100%;max-width:100%;aspect-ratio:16/9;background:#000}
+.video iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.vmeta{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 16px;font-size:12.5px;color:var(--muted)}
+.vmeta .src{flex:1;min-width:0}
+.vsearch{padding:22px 16px;display:flex;flex-direction:column;gap:10px;background:repeating-linear-gradient(135deg,var(--sunken) 0 12px,var(--surface) 12px 24px)}
+.vsearch p{margin:0;max-width:60ch}
+.vsearch .row{display:flex;gap:8px;flex-wrap:wrap}
+.override{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:12.5px;color:var(--muted)}
+.override input{flex:1;min-width:200px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+
+.notes{font-family:var(--serif);font-size:16.5px;line-height:1.65;max-width:68ch}
+.notes p{margin:0 0 .8em}
+.notes h4{font:600 13px var(--sans);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:1.2em 0 .5em}
+.notes ul,.notes ol{margin:0 0 .9em;padding-left:1.3em}
+.notes li{margin:.25em 0}
+.notes code{font-family:var(--mono);font-size:.86em;background:var(--sunken);padding:1px 5px;border-radius:4px}
+.notes .worked{font-family:var(--sans);font-size:14.5px;background:var(--brass-soft);border-left:3px solid var(--brass);padding:12px 14px;border-radius:0 8px 8px 0;margin:1em 0;overflow-x:auto}
+.notes .lands{font-family:var(--sans);font-size:13.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:10px;margin-top:14px}
+.notes table.mini{border-collapse:collapse;font-family:var(--sans);font-size:13.5px;margin:.4em 0 1em;display:block;overflow-x:auto;max-width:100%}
+.notes table.mini th,.notes table.mini td{border-bottom:1px solid var(--line);padding:6px 10px;text-align:left;white-space:nowrap}
+.notes table.mini th{font-weight:600;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.katex{font-size:1.04em}
+.katex-display{overflow-x:auto;overflow-y:hidden}
+
+.poll h4{font-size:16px;margin-bottom:12px}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{position:relative;display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;cursor:pointer;background:var(--surface);text-align:left;width:100%;overflow:hidden}
+.opt:hover{border-color:var(--accent)}
+.opt .fill{position:absolute;inset:0 auto 0 0;background:var(--accent-soft);z-index:0;transition:width .5s ease}
+.opt>*:not(.fill){position:relative;z-index:1}
+.opt .pct{margin-left:auto;font:500 13px var(--mono);font-variant-numeric:tabular-nums;color:var(--muted)}
+.opt.mine{border-color:var(--accent);font-weight:600}
+.pollnote{font-size:12.5px;color:var(--muted);margin-top:10px}
+
+.navrow{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+
+/* quiz */
+.q{border-top:1px solid var(--line);padding:16px 0}
+.q:first-of-type{border-top:0;padding-top:0}
+.q .qn{font:500 12px var(--mono);color:var(--muted)}
+.q h4{font-size:16px;font-weight:500;margin:4px 0 10px}
+.q label{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;cursor:pointer}
+.q label:hover{border-color:var(--accent)}
+.q input{margin-top:4px;accent-color:var(--accent)}
+.q label.right{background:var(--good-soft);border-color:var(--good)}
+.q label.wrong{background:var(--bad-soft);border-color:var(--bad)}
+.q .explain{font-size:13.5px;color:var(--muted);margin-top:6px}
+.q .explain b.ok{color:var(--good)} .q .explain b.no{color:var(--bad)}
+.result{display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+.ring{--p:0;width:92px;height:92px;border-radius:50%;background:conic-gradient(var(--brass) calc(var(--p)*1%),var(--sunken) 0);display:grid;place-items:center}
+.ring span{width:72px;height:72px;border-radius:50%;background:var(--surface);display:grid;place-items:center;font:600 20px var(--mono)}
+.badge{display:inline-block;font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:4px}
+.badge.pass{background:var(--good-soft);color:var(--good)} .badge.fail{background:var(--bad-soft);color:var(--bad)}
+.locked{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:20px}
+.locked ul{margin:8px 0 0;padding-left:1.2em}
+.attempts{font-size:13px;color:var(--muted)}
+
+/* tables (admin) */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table.data{border-collapse:collapse;width:100%;font-size:13px}
+table.data th,table.data td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+table.data th{background:var(--sunken);font-weight:600;font-size:12px}
+table.data td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.panel h3{font-size:16px}
+.panel p{margin:0;color:var(--muted);font-size:13.5px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.status{font-size:13px}
+.status.ok{color:var(--good)} .status.off{color:var(--muted)}
+
+/* modal */
+.scrim{position:fixed;inset:0;background:rgba(10,20,18,.55);display:grid;place-items:center;z-index:50;padding:16px}
+.modal{background:var(--surface);border-radius:14px;max-width:440px;width:100%;padding:22px;display:flex;flex-direction:column;gap:12px;border:1px solid var(--line)}
+.modal h2{font-size:20px}
+.modal p{margin:0;color:var(--muted);font-size:14px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:12.5px;font-weight:600}
+.field input,.field select{padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.err{color:var(--bad);font-size:13px;min-height:1em}
+
+.toast{position:fixed;left:50%;bottom:max(18px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 14px;border-radius:8px;font-size:13.5px;z-index:60}
+
+@media (max-width:860px){
+  .shell{grid-template-columns:1fr}
+  .rail{position:static;max-height:none;border-right:0;border-bottom:1px solid var(--line);padding:10px 12px}
+  .rail .days{display:flex;overflow-x:auto;gap:6px;padding-bottom:4px}
+  .rail h3,.rail .admin-link{display:none}
+  .daylink{grid-template-columns:auto;padding:4px}
+  .daylink .t,.daylink .score{display:none}
+  .daylink .num{width:34px}
+  .hero{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a class="brand" href="#home">
+    <span class="brand-mark">∑</span>
+    <span><b id="brandTitle">Faculty Maths Bootcamp</b><small id="brandSub">CSE · Even semester</small></span>
+  </a>
+  <span class="spacer"></span>
+  <div class="who" id="who"></div>
+</header>
+
+<div class="shell">
+  <nav class="rail" aria-label="Days">
+    <div class="days" id="railDays"></div>
+    <a class="admin-link" href="#admin">Coordinator view →</a>
+  </nav>
+  <main><div class="wrap" id="view"></div></main>
+</div>
+
+<div class="scrim" id="loginScrim" hidden>
+  <form class="modal" id="loginForm" novalidate>
+    <div class="eyebrow">Sign in to record your progress</div>
+    <h2>Who is taking the course?</h2>
+    <p>Your quiz scores and poll votes are saved under these details.</p>
+    <div class="field"><label for="fName">Full name</label><input id="fName" autocomplete="name" required></div>
+    <div class="field"><label for="fEmp">Employee ID</label><input id="fEmp" required></div>
+    <div class="field"><label for="fDept">Department</label><input id="fDept" value="CSE"></div>
+    <div class="field"><label for="fCourses">Courses you handle this semester</label><input id="fCourses" placeholder="e.g. 24CST402 OS, 24CSL407 OS Lab"></div>
+    <div class="err" id="loginErr"></div>
+    <button class="btn primary" type="submit">Start the course</button>
+  </form>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* =====================================================================
+   COURSE CONTENT — edit this file to change videos, notes, polls, quizzes.
+   Video:  { yt: "<YouTube ID>", src: "who/what" }  → embedded player
+           { search: "<search words>" }              → search card (no verified video yet)
+   Notes use KaTeX: $inline$ and $$display$$. Notes are written with N`...`
+   (String.raw) so backslashes survive. Never write "${" inside notes.
+   Quiz: a = index of the correct option (0-based), e = explanation.
+   ===================================================================== */
+const N = String.raw;
+
+const COURSE = {
+  title: "Mathematics Prerequisite Programme",
+  subtitle: "Faculty bootcamp · CSE 2024 curriculum · Even semester (S2, S4, S6) + Data Structures",
+  institution: "Department of Computer Science and Engineering",
+  days: [
+
+/* ============================ WEEK 1 ============================ */
+{
+  id: 1, week: 1, code: "B1", title: "Logic, sets and proof",
+  lands: "DSA · DAA · DBMS · Compiler Design · Functional Programming",
+  topics: [
+    {
+      id: "d1t1", title: "Propositional and predicate logic",
+      video: { yt: "L3LMbpZIKhQ", src: "MIT 6.042J (Fall 2010) · Lecture 1: Introduction and Proofs · Tom Leighton" },
+      notes: N`
+<p>A <b>proposition</b> is a statement that is either true or false. Connectives build compound statements: $\neg p$, $p \wedge q$, $p \vee q$, $p \rightarrow q$, $p \leftrightarrow q$.</p>
+<p>The implication is the one students misread. $p \rightarrow q$ is false <i>only</i> when $p$ is true and $q$ is false, so it is equivalent to $\neg p \vee q$. Its <b>contrapositive</b> $\neg q \rightarrow \neg p$ is logically equivalent; its converse $q \rightarrow p$ is not.</p>
+<h4>Laws you will use in class</h4>
+<ul>
+<li>De Morgan: $\neg(p \wedge q) \equiv \neg p \vee \neg q$ and $\neg(p \vee q) \equiv \neg p \wedge \neg q$.</li>
+<li>Quantifier negation: $\neg \forall x\, P(x) \equiv \exists x\, \neg P(x)$ and $\neg \exists x\, P(x) \equiv \forall x\, \neg P(x)$.</li>
+<li>Normal forms: every formula has an equivalent CNF and DNF (the basis of SAT and of SOP/POS in digital design).</li>
+</ul>
+<div class="worked"><b>Worked example.</b> Negate "every request gets a response": $\forall r\, \exists s\, \mathrm{Resp}(r,s)$. Push the negation inward: $\exists r\, \forall s\, \neg\mathrm{Resp}(r,s)$ — "some request gets no response at all". This is exactly how you state a liveness bug in OS synchronisation.</div>
+<p class="lands"><b>Where it lands:</b> loop invariants and correctness proofs (DSA, DAA), WHERE clauses and tuple relational calculus (DBMS), type rules (Compiler Design), K-maps and SOP/POS (Digital System Design).</p>`,
+      poll: { q: "Where do your students most often go wrong with logic?", opts: ["Implication when the premise is false", "Negating quantified statements", "Translating English into logic", "Writing the proof itself"] }
+    },
+    {
+      id: "d1t2", title: "Sets, functions and the pigeonhole principle",
+      video: { search: "NPTEL discrete mathematics sets relations functions" },
+      notes: N`
+<p>A <b>set</b> is an unordered collection without repetition. Core operations: union, intersection, difference, complement, Cartesian product $A \times B = \{(a,b) : a \in A, b \in B\}$.</p>
+<ul>
+<li>Power set: $|\mathcal{P}(A)| = 2^{|A|}$ — every subset is a bit-vector of length $|A|$.</li>
+<li>Inclusion–exclusion: $|A \cup B| = |A| + |B| - |A \cap B|$; for three sets add back $|A\cap B\cap C|$.</li>
+<li>A function $f: A \to B$ is <b>injective</b> (no two inputs share an output), <b>surjective</b> (every output is hit), <b>bijective</b> (both, so an inverse exists).</li>
+<li><b>Pigeonhole:</b> if $n$ items go into $m < n$ boxes, some box holds at least $\lceil n/m \rceil$ items.</li>
+</ul>
+<div class="worked"><b>Worked example.</b> A hash function maps 1,000 student IDs into a table of 997 slots. By pigeonhole at least two IDs must collide — no hash function can be injective here. This is the one-line argument behind "collisions are unavoidable".</div>
+<p>A relational table is a subset of a Cartesian product of attribute domains. SQL, however, uses <b>bag (multiset)</b> semantics: duplicates survive unless you write DISTINCT.</p>
+<p class="lands"><b>Where it lands:</b> relational model (DBMS), hashing (DSA), bijections in counting arguments (DAA), types as sets (Functional Programming).</p>`,
+      poll: { q: "Do you introduce a relation as a subset of A × B before teaching relational algebra?", opts: ["Always", "Sometimes", "Never", "I don't teach DBMS"] }
+    },
+    {
+      id: "d1t3", title: "Induction and loop invariants",
+      video: { yt: "z8HKWUWS-lA", src: "MIT 6.042J (Fall 2010) · Lecture 2: Induction · Tom Leighton" },
+      notes: N`
+<p><b>Weak induction:</b> prove $P(0)$, then prove $P(n) \Rightarrow P(n+1)$ for all $n$. <b>Strong induction:</b> assume $P(0), \dots, P(n)$ to prove $P(n+1)$ — natural for recursive algorithms that split a problem into unequal parts.</p>
+<p><b>Structural induction</b> follows the definition of a data type: prove the claim for the empty list (or leaf), then for a node assuming it holds for the children.</p>
+<h4>A loop invariant is induction on iterations</h4>
+<ol>
+<li><b>Initialisation</b> — the invariant holds before the first iteration (base case).</li>
+<li><b>Maintenance</b> — if it holds before an iteration, it holds after (inductive step).</li>
+<li><b>Termination</b> — when the loop guard becomes false, the invariant plus the negated guard gives correctness.</li>
+</ol>
+<div class="worked"><b>Worked example.</b> Insertion sort, invariant: "before iteration $j$, $A[0..j-1]$ holds the original first $j$ elements in sorted order." At exit $j = n$, so the whole array is sorted.<br><br>Strong induction: a binary tree with $n$ internal nodes (each with 2 children) has $n+1$ leaves. Split at the root: $n = 1 + n_L + n_R$ internal nodes, leaves $= (n_L+1) + (n_R+1) = n + 1$.</div>
+<p class="lands"><b>Where it lands:</b> every correctness proof in DSA and DAA, structural induction over lists and trees (Functional Programming), termination of fixed-point computations (Compiler Design).</p>`,
+      poll: { q: "Which technique would you use in class to prove binary search correct?", opts: ["Loop invariant", "Strong induction on the range size", "Proof by contradiction", "Test cases on examples"] }
+    }
+  ],
+  quiz: [
+    { q: N`$\neg\, \forall x\, P(x)$ is equivalent to:`, o: [N`$\forall x\, \neg P(x)$`, N`$\exists x\, \neg P(x)$`, N`$\neg \exists x\, P(x)$`, N`$\exists x\, P(x)$`], a: 1, e: "Negation flips the quantifier and moves inward: not everyone satisfies P means someone fails P." },
+    { q: N`$p \rightarrow q$ is false exactly when:`, o: ["p is false and q is true", "p is false and q is false", "p is true and q is false", "p and q are both true"], a: 2, e: "An implication only fails when a true premise leads to a false conclusion." },
+    { q: "The contrapositive of “if n² is even then n is even” is:", o: ["If n is even then n² is even", "If n is odd then n² is odd", "If n² is odd then n is odd", "If n is odd then n² is even"], a: 1, e: "Contrapositive of p → q is ¬q → ¬p: n not even (odd) implies n² not even (odd)." },
+    { q: "If |A| = 5, how many subsets does A have?", o: ["10", "25", "32", "120"], a: 2, e: "|P(A)| = 2⁵ = 32; each element is either in or out of a subset." },
+    { q: "In a loop-invariant proof, which step uses the fact that the loop guard has become false?", o: ["Initialisation", "Maintenance", "Termination", "None of them"], a: 2, e: "At termination the invariant together with the negated guard yields the postcondition." }
+  ]
+},
+{
+  id: 2, week: 1, code: "B2", title: "Number systems, Boolean and modular arithmetic",
+  lands: "Digital System Design · Programming in C · Hashing · Information Security · Quantum",
+  topics: [
+    {
+      id: "d2t1", title: "Binary, 2's complement and IEEE 754",
+      video: { search: "NPTEL number systems two's complement IEEE 754 floating point" },
+      notes: N`
+<p>In base $b$, the digits $d_{k}\dots d_0$ represent $\sum_i d_i\, b^i$. Convert to binary by repeated division by 2 (integers) or repeated multiplication by 2 (fractions).</p>
+<h4>2's complement (n bits)</h4>
+<ul>
+<li>Range: $-2^{n-1}$ to $2^{n-1}-1$ (8 bits: −128 to 127).</li>
+<li>Negation: invert all bits and add 1, i.e. $-x = \sim x + 1$.</li>
+<li>Overflow happens when two operands of the same sign give a result of the other sign.</li>
+</ul>
+<div class="worked"><b>Worked example.</b> −13 in 8 bits: $13 = 00001101$, invert $\to 11110010$, add 1 $\to 11110011$.</div>
+<h4>IEEE 754 single precision</h4>
+<p>1 sign bit, 8 exponent bits (bias 127), 23 fraction bits: value $= (-1)^s \times 1.f \times 2^{e-127}$. Machine epsilon is $2^{-23} \approx 1.19 \times 10^{-7}$ (double: $2^{-52}$). Fractions such as 0.1 have no finite binary expansion, which is why <code>0.1 + 0.2 != 0.3</code>.</p>
+<p class="lands"><b>Where it lands:</b> arithmetic circuits (DSD), integer overflow and float comparison (C), numerical error in parallel reductions (HPC) and training (Deep Learning).</p>`,
+      poll: { q: "How do you first introduce 2's complement to students?", opts: ["Invert-and-add-1 rule", "Number wheel / modulo 2ⁿ", "Weighted bits (−2ⁿ⁻¹ for the MSB)", "Through subtraction circuits"] }
+    },
+    {
+      id: "d2t2", title: "Divisibility, GCD and the extended Euclidean algorithm",
+      video: { yt: "NuY7szYSXSw", src: "MIT 6.042J (Fall 2010) · Lecture 4: Number Theory I · Tom Leighton" },
+      notes: N`
+<p>Euclid's algorithm rests on $\gcd(a,b) = \gcd(b,\ a \bmod b)$ with $\gcd(a,0)=a$. It takes $O(\log \min(a,b))$ steps (Lamé's theorem — worst case is consecutive Fibonacci numbers).</p>
+<p><b>Bézout's identity:</b> there exist integers $x, y$ with $ax + by = \gcd(a,b)$. The extended algorithm finds them by back-substitution. If $\gcd(a,m)=1$, then $x$ is the <b>modular inverse</b> $a^{-1} \bmod m$.</p>
+<div class="worked"><b>Worked example.</b> Find $17^{-1} \bmod 43$.<br>
+$43 = 2\cdot 17 + 9$, &nbsp; $17 = 1\cdot 9 + 8$, &nbsp; $9 = 1 \cdot 8 + 1$.<br>
+Back-substitute: $1 = 9 - 8 = 9 - (17 - 9) = 2\cdot 9 - 17 = 2(43 - 2\cdot 17) - 17 = 2\cdot 43 - 5 \cdot 17$.<br>
+So $17^{-1} \equiv -5 \equiv 38 \pmod{43}$. Check: $17 \times 38 = 646 = 15 \times 43 + 1$. ✓</div>
+<p class="lands"><b>Where it lands:</b> RSA key generation (Information Security), number-theoretic algorithms (DAA), rational arithmetic in compilers, hash table sizing with primes (DSA).</p>`,
+      poll: { q: "Do your students see the extended Euclidean algorithm before they meet RSA?", opts: ["Yes, in a maths course", "Yes, I teach it myself", "No, they meet it inside RSA", "Not sure"] }
+    },
+    {
+      id: "d2t3", title: "Modular arithmetic: Fermat, Euler and CRT",
+      video: { search: "NPTEL modular arithmetic Fermat little theorem Euler theorem Chinese remainder" },
+      notes: N`
+<p>$a \equiv b \pmod m$ means $m \mid (a-b)$. Addition, subtraction and multiplication respect congruence, so you can reduce at every step.</p>
+<ul>
+<li><b>Fermat's little theorem:</b> for prime $p$ and $p \nmid a$, $a^{p-1} \equiv 1 \pmod p$.</li>
+<li><b>Euler's theorem:</b> if $\gcd(a,n)=1$, $a^{\varphi(n)} \equiv 1 \pmod n$, where $\varphi(n) = n\prod_{p\mid n}(1 - 1/p)$. For example $\varphi(36) = 36 \cdot \tfrac12 \cdot \tfrac23 = 12$.</li>
+<li><b>Chinese Remainder Theorem:</b> for coprime moduli, a system $x \equiv a_i \pmod{m_i}$ has a unique solution mod $\prod m_i$.</li>
+<li><b>Fast exponentiation</b> (square-and-multiply) needs $O(\log e)$ multiplications.</li>
+</ul>
+<div class="worked"><b>Worked example.</b> $7^{222} \bmod 11$. By Fermat $7^{10} \equiv 1$. $222 = 22 \cdot 10 + 2$, so $7^{222} \equiv 7^2 = 49 \equiv 5 \pmod{11}$.<br><br>CRT: $x \equiv 2 \pmod 3$, $x \equiv 3 \pmod 5$ gives $x \equiv 8 \pmod{15}$.</div>
+<p>Finite fields $GF(p)$ and $GF(2^n)$ (polynomials modulo an irreducible polynomial) underpin AES and elliptic-curve cryptography.</p>
+<p class="lands"><b>Where it lands:</b> RSA, Diffie–Hellman, AES (Information Security, Advanced Information Security), universal hashing (DSA), Miller–Rabin (DAA).</p>`,
+      poll: { q: "Which of these do you find hardest to motivate for students?", opts: ["Euler's φ function", "Chinese Remainder Theorem", "Finite fields GF(2ⁿ)", "Fast modular exponentiation"] }
+    }
+  ],
+  quiz: [
+    { q: "The 8-bit 2's complement representation of −13 is:", o: ["10001101", "11110010", "11110011", "11101101"], a: 2, e: "13 = 00001101 → invert 11110010 → add 1 → 11110011." },
+    { q: "The range of an 8-bit 2's complement integer is:", o: ["−127 to 127", "−128 to 127", "−128 to 128", "0 to 255"], a: 1, e: "n bits give −2ⁿ⁻¹ to 2ⁿ⁻¹ − 1." },
+    { q: N`The modular inverse $17^{-1} \bmod 43$ is:`, o: ["5", "38", "17", "26"], a: 1, e: "From 1 = 2·43 − 5·17, the inverse is −5 ≡ 38 (mod 43); 17 × 38 = 646 = 15·43 + 1." },
+    { q: N`$7^{222} \bmod 11$ equals:`, o: ["1", "3", "5", "7"], a: 2, e: "7¹⁰ ≡ 1 (Fermat), 222 = 22·10 + 2, so the answer is 7² = 49 ≡ 5." },
+    { q: N`Euler's $\varphi(36)$ is:`, o: ["12", "18", "24", "35"], a: 0, e: "36 = 2²·3², so φ = 36 · (1 − 1/2) · (1 − 1/3) = 12." }
+  ]
+},
+{
+  id: 3, week: 1, code: "B3", title: "Counting, recurrences and asymptotics",
+  lands: "DSA · DAA · OS · DBMS indexing · Compiler Design · HPC",
+  topics: [
+    {
+      id: "d3t1", title: "Counting: permutations, combinations, Catalan numbers",
+      video: { search: "NPTEL permutations combinations counting principles discrete mathematics" },
+      notes: N`
+<ul>
+<li><b>Product rule</b> for sequential choices, <b>sum rule</b> for disjoint alternatives.</li>
+<li>Ordered selections $P(n,k) = \frac{n!}{(n-k)!}$; unordered $\binom{n}{k} = \frac{n!}{k!(n-k)!}$.</li>
+<li><b>Stars and bars:</b> non-negative integer solutions of $x_1 + \dots + x_k = n$ number $\binom{n+k-1}{k-1}$.</li>
+<li><b>Binomial theorem:</b> $(x+y)^n = \sum_k \binom{n}{k} x^k y^{n-k}$; setting $x=y=1$ gives $\sum_k \binom{n}{k} = 2^n$.</li>
+<li><b>Catalan numbers</b> $C_n = \frac{1}{n+1}\binom{2n}{n}$: 1, 1, 2, 5, 14, 42, … count BST shapes on $n$ keys, valid parenthesisations, and valid stack permutations.</li>
+</ul>
+<div class="worked"><b>Worked example.</b> Solutions of $x + y + z = 10$ in non-negative integers: $\binom{12}{2} = 66$. Distinct BSTs on 4 keys: $C_4 = \frac{1}{5}\binom{8}{4} = 14$.</div>
+<p class="lands"><b>Where it lands:</b> counting BSTs and stack permutations (DSA), matrix-chain parenthesisations (DAA), interleavings of concurrent threads (OS), password and key spaces (Information Security).</p>`,
+      poll: { q: "Do you show students why the number of BSTs on n keys is a Catalan number?", opts: ["Yes, with the recurrence", "I state the result only", "No, it isn't in my syllabus", "I'd like a ready-made explanation"] }
+    },
+    {
+      id: "d3t2", title: "Sums and asymptotic notation",
+      video: { yt: "X9eErxRjQEI", src: "MIT 6.042J (Fall 2010) · Lecture 13: Sums and Asymptotics · Tom Leighton" },
+      notes: N`
+<h4>Sums every algorithms teacher needs</h4>
+<ul>
+<li>$\sum_{i=1}^n i = \frac{n(n+1)}{2} = \Theta(n^2)$, &nbsp; $\sum_{i=1}^n i^2 = \frac{n(n+1)(2n+1)}{6} = \Theta(n^3)$.</li>
+<li>Geometric: $\sum_{i=0}^{k} r^i = \frac{r^{k+1}-1}{r-1}$; for $r<1$ the infinite sum is $\frac{1}{1-r}$.</li>
+<li>Harmonic: $H_n = \sum_{i=1}^n \frac1i = \ln n + O(1)$.</li>
+<li>Stirling: $\log_2 n! = \Theta(n \log n)$.</li>
+</ul>
+<h4>Asymptotic notation</h4>
+<p>$f = O(g)$ if $f(n) \le c\,g(n)$ for all $n \ge n_0$; $\Omega$ is the lower bound; $\Theta$ is both. The limit test is quickest: if $\lim f/g$ is a positive constant, $f = \Theta(g)$; if it is 0, $f = o(g)$.</p>
+<div class="worked"><b>Growth order to drill:</b> $1 \prec \log n \prec \sqrt n \prec n \prec n\log n \prec n^2 \prec n^{10} \prec 2^n \prec n! \prec n^n$.</div>
+<p class="lands"><b>Where it lands:</b> every complexity claim in DSA and DAA, page-table and B+ tree sizing (OS, DBMS), work and span (HPC).</p>`,
+      poll: { q: "How do you usually justify that one function grows faster than another?", opts: ["Limit test", "Plotting / tables of values", "Definition with c and n₀", "Taking logarithms"] }
+    },
+    {
+      id: "d3t3", title: "Recurrences and divide-and-conquer",
+      video: { yt: "Kqf0uO0oV6s", src: "MIT 6.042J (Fall 2010) · Lecture 14: Divide and Conquer Recurrences · Tom Leighton" },
+      notes: N`
+<p>Three ways to solve a recurrence: <b>substitution</b> (guess and prove by induction), the <b>recursion tree</b> (sum the cost level by level), and the <b>master theorem</b>.</p>
+<div class="worked"><b>Recursion tree.</b> $T(n) = 2T(n/2) + n$: each level costs $n$, there are $\log_2 n$ levels, so $T(n) = \Theta(n \log n)$.</div>
+<h4>Master theorem for $T(n) = aT(n/b) + f(n)$</h4>
+<p>Compare $f(n)$ with $n^{\log_b a}$:</p>
+<ol>
+<li>$f = O(n^{\log_b a - \epsilon})$ → $T = \Theta(n^{\log_b a})$ (leaves dominate).</li>
+<li>$f = \Theta(n^{\log_b a})$ → $T = \Theta(n^{\log_b a}\log n)$ (balanced).</li>
+<li>$f = \Omega(n^{\log_b a + \epsilon})$ and $a f(n/b) \le c f(n)$ → $T = \Theta(f(n))$ (root dominates).</li>
+</ol>
+<p><b>Linear recurrences</b> such as $F_n = F_{n-1} + F_{n-2}$ are solved by the characteristic equation $x^2 = x + 1$, giving $F_n = \Theta(\varphi^n)$ with $\varphi \approx 1.618$ — the source of the AVL height bound.</p>
+<p class="lands"><b>Where it lands:</b> merge sort, quick sort, binary search (DSA); Strassen, Karatsuba, closest pair (DAA); AVL trees (DSA, Advanced Data Structures).</p>`,
+      poll: { q: "Which method do you teach first for recurrences?", opts: ["Recursion tree", "Master theorem", "Substitution", "Iteration / unrolling"] }
+    }
+  ],
+  quiz: [
+    { q: "How many distinct binary search trees can be built on 4 distinct keys?", o: ["4", "8", "14", "24"], a: 2, e: "It is the Catalan number C₄ = (1/5)·C(8,4) = 14." },
+    { q: N`$\sum_{i=1}^{n} i$ is:`, o: [N`$\Theta(n)$`, N`$\Theta(n \log n)$`, N`$\Theta(n^2)$`, N`$\Theta(n^3)$`], a: 2, e: "The sum is n(n+1)/2." },
+    { q: N`$T(n) = 2T(n/2) + n$ solves to:`, o: [N`$\Theta(n)$`, N`$\Theta(n \log n)$`, N`$\Theta(n^2)$`, N`$\Theta(\log n)$`], a: 1, e: "Master theorem case 2: f(n) = n = n^(log₂2)." },
+    { q: "Which grows fastest?", o: [N`$n^{10}$`, N`$2^n$`, N`$n!$`, N`$n \log n$`], a: 2, e: "n! eventually exceeds every exponential cⁿ." },
+    { q: "Number of non-negative integer solutions of x + y + z = 10:", o: ["30", "45", "66", "120"], a: 2, e: "Stars and bars: C(10 + 2, 2) = 66." }
+  ]
+},
+{
+  id: 4, week: 1, code: "B4", title: "Relations, graphs, trees and automata",
+  lands: "Graph Theory · DAA · OS deadlocks · DBMS dependencies · Compiler Design",
+  topics: [
+    {
+      id: "d4t1", title: "Relations, equivalence and partial orders",
+      video: { yt: "1nScXLQAQ9A", src: "MIT 6.042J (Fall 2010) · Lecture 11: Relations, Partial Orders, and Scheduling · Tom Leighton" },
+      notes: N`
+<p>A relation $R \subseteq A \times A$ can be <b>reflexive</b>, <b>symmetric</b>, <b>antisymmetric</b>, <b>transitive</b>.</p>
+<ul>
+<li><b>Equivalence relation</b> = reflexive + symmetric + transitive. Its classes partition the set (e.g. congruence mod $m$, connected components, DFA state equivalence).</li>
+<li><b>Partial order</b> = reflexive + antisymmetric + transitive. Draw it as a Hasse diagram. Any partial order has a <b>topological order</b> (a linear extension).</li>
+<li><b>Transitive closure</b> $R^+$: the smallest transitive relation containing $R$; Warshall's algorithm computes it in $O(n^3)$.</li>
+</ul>
+<div class="worked"><b>Worked example.</b> Divisibility on $\{1,2,3,4,6,12\}$ is a partial order. Its Hasse diagram has 1 at the bottom, 12 at the top, and 2–4, 3–6 chains in between. A task DAG with prerequisite edges is the same object: a schedule is a topological order, and the longest chain is the minimum completion time.</div>
+<p class="lands"><b>Where it lands:</b> functional dependencies and attribute closure (DBMS), resource-allocation graphs (OS), lattices in data-flow analysis (Compiler Design), CPM scheduling (Software Project Management).</p>`,
+      poll: { q: "Which application of partial orders resonates most with your students?", opts: ["Task / course prerequisites", "Build systems and makefiles", "Version control histories", "Data-flow lattices"] }
+    },
+    {
+      id: "d4t2", title: "Graphs and trees: the counting facts",
+      video: { search: "NPTEL graph theory basics trees spanning trees handshaking lemma" },
+      notes: N`
+<ul>
+<li><b>Handshake lemma:</b> $\sum_v \deg(v) = 2|E|$, so the number of odd-degree vertices is even.</li>
+<li>A simple undirected graph on $n$ vertices has at most $\binom{n}{2} = \frac{n(n-1)}{2}$ edges.</li>
+<li>A <b>tree</b> on $n$ vertices is connected, acyclic and has exactly $n-1$ edges (any two of these imply the third).</li>
+<li>A graph is <b>bipartite</b> iff it has no odd-length cycle (test with BFS 2-colouring).</li>
+<li><b>Euler circuit</b> exists iff the graph is connected and every vertex has even degree.</li>
+<li>Adjacency matrix: $\Theta(n^2)$ space; adjacency list: $\Theta(n + m)$. $(A^k)_{ij}$ counts walks of length $k$ from $i$ to $j$.</li>
+</ul>
+<div class="worked"><b>Worked example.</b> Can 9 servers each have exactly 3 network links to other servers? The degree sum would be 27, which is odd, but it must equal $2|E|$. So no such network exists. With 10 servers the sum is 30, giving 15 links, which is possible.</div>
+<p class="lands"><b>Where it lands:</b> BFS/DFS complexity (DSA), MST and shortest paths (DAA), deadlock detection (OS), register allocation by colouring (Compiler Design), task graphs (HPC).</p>`,
+      poll: { q: "Which graph representation do you use first in labs?", opts: ["Adjacency matrix", "Adjacency list", "Edge list", "Both side by side"] }
+    },
+    {
+      id: "d4t3", title: "Finite automata and regular expressions",
+      video: { yt: "oNsscmUwjMU", src: "MIT 18.404J (Fall 2020) · Lecture 2: Nondeterminism, Closure Properties, Regular Expressions → FA · Michael Sipser" },
+      notes: N`
+<p>A <b>DFA</b> is $(Q, \Sigma, \delta, q_0, F)$ with exactly one move per state and symbol. An <b>NFA</b> may have several moves or ε-moves. Both recognise exactly the <b>regular languages</b>.</p>
+<ul>
+<li><b>Subset construction:</b> an NFA with $n$ states becomes a DFA with at most $2^n$ states.</li>
+<li><b>Thompson's construction:</b> regular expression → NFA, one small gadget per operator (union, concatenation, star).</li>
+<li>Regular languages are closed under union, intersection, complement, concatenation and star.</li>
+<li>A <b>context-free grammar</b> adds recursion (balanced brackets, nested expressions), recognised by a pushdown automaton.</li>
+</ul>
+<div class="worked"><b>Worked example.</b> Binary strings divisible by 3. Keep the remainder $r \in \{0,1,2\}$. Reading bit $b$ turns value $v$ into $2v + b$, so $\delta(r, b) = (2r + b) \bmod 3$. Start and accept in state 0. Three states, one line of maths.</div>
+<p class="lands"><b>Where it lands:</b> lexical analysis and parsing (Compiler Design), sequential circuits and state machines (Digital System Design), pattern matching (DSA labs).</p>`,
+      poll: { q: "Which automaton example do your students remember best?", opts: ["Divisible-by-3 DFA", "Vending machine / traffic light", "Identifier and number tokens", "Even number of 0s and 1s"] }
+    }
+  ],
+  quiz: [
+    { q: "The maximum number of edges in a simple undirected graph with 10 vertices is:", o: ["20", "45", "90", "100"], a: 1, e: "C(10, 2) = 45." },
+    { q: "A relation that is reflexive, antisymmetric and transitive is:", o: ["An equivalence relation", "A partial order", "A function", "A total order necessarily"], a: 1, e: "That is the definition of a partial order; a total order additionally requires every pair to be comparable." },
+    { q: "A tree with 20 vertices has how many edges?", o: ["19", "20", "21", "40"], a: 0, e: "Every tree on n vertices has n − 1 edges." },
+    { q: "A graph is bipartite if and only if:", o: ["It is a tree", "Every vertex has even degree", "It has no odd-length cycle", "It is planar"], a: 2, e: "Odd cycles are the only obstruction to 2-colouring." },
+    { q: "Subset construction turns an NFA with n states into a DFA with at most:", o: ["n states", "n² states", N`$2^n$ states`, "n! states"], a: 2, e: "Each DFA state is a subset of the NFA's states." }
+  ]
+},
+{
+  id: 5, week: 1, code: "B5", title: "Linear algebra and calculus",
+  lands: "Deep Learning · Image Processing & CV · Quantum · EDA · Big Data · HPC",
+  topics: [
+    {
+      id: "d5t1", title: "Vectors, matrices and solving Ax = b",
+      video: { search: "Gilbert Strang lecture 1 geometry of linear equations MIT 18.06" },
+      notes: N`
+<ul>
+<li>Dot product $u \cdot v = \sum u_i v_i = \|u\|\|v\|\cos\theta$; <b>cosine similarity</b> $= \frac{u\cdot v}{\|u\|\|v\|}$ (search, recommendation, NLP).</li>
+<li>Norms: $\|v\|_1 = \sum|v_i|$, $\|v\|_2 = \sqrt{\sum v_i^2}$, $\|v\|_\infty = \max|v_i|$.</li>
+<li>Matrix–matrix multiplication of $n\times n$ matrices: $n^3$ multiplications naively ($2n^3$ flops counting additions).</li>
+<li>$Ax = b$ is solvable iff $b$ is in the column space of $A$. Gaussian elimination ($A = LU$) costs about $\tfrac23 n^3$ flops.</li>
+<li>Rank = number of independent columns = dimension of the column space; rank–nullity: $\mathrm{rank} + \dim N(A) = n$.</li>
+</ul>
+<div class="worked"><b>Worked example.</b> Cosine similarity of $(1,0)$ and $(1,1)$ is $\frac{1}{1 \cdot \sqrt2} \approx 0.707$, an angle of 45°.<br>Solve $x + 2y = 5,\ 3x + 4y = 11$: subtract 3× row 1 from row 2 → $-2y = -4$, so $y = 2, x = 1$.</div>
+<p class="lands"><b>Where it lands:</b> transformation matrices (Computer Graphics, Mobile App Dev), linear layers (Deep Learning), matrix kernels (HPC), KVL/KCL systems (FEEE).</p>`,
+      poll: { q: "How comfortable are you teaching matrix rank and column space?", opts: ["Very comfortable", "Comfortable with notes", "I'd need a refresher", "Not part of my courses"] }
+    },
+    {
+      id: "d5t2", title: "Eigenvalues and eigenvectors",
+      video: { yt: "cdZnhQjJu4I", src: "MIT 18.06 Linear Algebra · Lecture 21: Eigenvalues and Eigenvectors · Gilbert Strang" },
+      notes: N`
+<p>$Av = \lambda v$: the direction of $v$ survives the transformation and is only scaled by $\lambda$. Find $\lambda$ from $\det(A - \lambda I) = 0$.</p>
+<ul>
+<li>$\sum \lambda_i = \mathrm{trace}(A)$ and $\prod \lambda_i = \det(A)$ — fast sanity checks.</li>
+<li>Symmetric matrices have real eigenvalues and orthogonal eigenvectors: $A = Q\Lambda Q^\top$.</li>
+<li>Diagonalisation $A = S\Lambda S^{-1}$ gives $A^k = S\Lambda^k S^{-1}$: powers, Markov chains, Fibonacci in closed form.</li>
+</ul>
+<div class="worked"><b>Worked example.</b> $A = \begin{bmatrix}2&1\\1&2\end{bmatrix}$. $\det(A-\lambda I) = (2-\lambda)^2 - 1 = 0$ gives $\lambda = 1, 3$. Eigenvectors $(1,-1)$ and $(1,1)$. Check: trace $4 = 1+3$, det $3 = 1\cdot 3$.</div>
+<p class="lands"><b>Where it lands:</b> PageRank (Big Data), PCA (EDA, Image Processing), spectral graph theory (Graph Theory), stability of training dynamics (Deep Learning), Hermitian observables (Quantum).</p>`,
+      poll: { q: "Which eigenvector application would you use to motivate students?", opts: ["Google PageRank", "PCA / face recognition", "Vibration / stability", "Markov chains"] }
+    },
+    {
+      id: "d5t3", title: "Singular value decomposition and low rank",
+      video: { yt: "TX_vooSnhm8", src: "MIT 18.06 Linear Algebra · Lecture 29: Singular Value Decomposition · Gilbert Strang" },
+      notes: N`
+<p>Every $m \times n$ matrix factors as $A = U\Sigma V^\top$, with orthogonal $U, V$ and non-negative singular values $\sigma_1 \ge \sigma_2 \ge \dots$ on the diagonal of $\Sigma$. The $\sigma_i$ are square roots of the eigenvalues of $A^\top A$.</p>
+<ul>
+<li><b>Eckart–Young:</b> keeping the top $k$ singular values gives the best rank-$k$ approximation of $A$ (in both spectral and Frobenius norm).</li>
+<li>Storage drops from $mn$ numbers to $k(m+n+1)$.</li>
+<li><b>PCA</b> is the SVD of the mean-centred data matrix; the right singular vectors are the principal directions.</li>
+<li>Condition number $\kappa = \sigma_{\max}/\sigma_{\min}$ measures how much a linear solve amplifies error.</li>
+</ul>
+<div class="worked"><b>Worked example.</b> A 1000 × 1000 greyscale image stored at rank 50 needs $50(1000+1000+1) = 100{,}050$ numbers instead of $10^6$ — a 10× compression, usually with little visible loss.</div>
+<p class="lands"><b>Where it lands:</b> image compression and eigenfaces (Image Processing & CV), latent factors and recommender systems (Big Data), numerical stability (HPC), embeddings (Deep Learning).</p>`,
+      poll: { q: "Would a hands-on image-compression lab with SVD work in your course?", opts: ["Yes, in Python / NumPy", "Yes, but only as a demo", "Not enough lab time", "Not relevant to my courses"] }
+    },
+    {
+      id: "d5t4", title: "Multivariable calculus for learning",
+      video: { search: "NPTEL partial derivatives gradient chain rule multivariable calculus" },
+      notes: N`
+<ul>
+<li>Partial derivative $\frac{\partial f}{\partial x_i}$: vary one input, hold the rest fixed.</li>
+<li><b>Gradient</b> $\nabla f$ points in the direction of steepest increase; $-\nabla f$ is the descent direction.</li>
+<li><b>Chain rule:</b> if $y = f(g(x))$ then $\frac{dy}{dx} = f'(g(x))\,g'(x)$; for vector functions, Jacobians multiply.</li>
+<li><b>Hessian</b> (matrix of second derivatives) decides curvature: positive definite at a stationary point means a local minimum.</li>
+<li><b>Taylor:</b> $f(x+h) \approx f(x) + \nabla f^\top h + \tfrac12 h^\top H h$.</li>
+</ul>
+<div class="worked"><b>Worked example.</b> Squared error of a linear model: $L(w) = (w^\top x - y)^2$. By the chain rule $\nabla_w L = 2(w^\top x - y)\,x$. This single line is the update rule for linear regression and the last layer of every network.</div>
+<p class="lands"><b>Where it lands:</b> backpropagation and optimisers (Deep Learning, Machine Learning), edge detection as gradients of intensity (Image Processing), sensitivity analysis (HPC).</p>`,
+      poll: { q: "Do your students handle the chain rule with vectors confidently?", opts: ["Yes", "Only for scalars", "No, it needs re-teaching", "Not needed in my courses"] }
+    }
+  ],
+  quiz: [
+    { q: N`The eigenvalues of $\begin{bmatrix}2&1\\1&2\end{bmatrix}$ are:`, o: ["1 and 2", "1 and 3", "2 and 2", "0 and 4"], a: 1, e: "(2 − λ)² − 1 = 0 gives λ = 1, 3; trace 4 and determinant 3 confirm it." },
+    { q: "Naively multiplying two n × n matrices takes how many scalar multiplications?", o: [N`$n^2$`, N`$n^2 \log n$`, N`$n^3$`, N`$2^n$`], a: 2, e: "Each of the n² entries is a dot product of length n." },
+    { q: N`$\nabla_w (w^\top x - y)^2$ equals:`, o: [N`$2(w^\top x - y)\,w$`, N`$2(w^\top x - y)\,x$`, N`$(w^\top x - y)^2 x$`, N`$2x$`], a: 1, e: "Outer derivative 2(wᵀx − y) times inner derivative x." },
+    { q: "The best rank-k approximation of a matrix (Frobenius norm) comes from:", o: ["LU decomposition", "Truncated SVD", "QR decomposition", "Gaussian elimination"], a: 1, e: "Eckart–Young: keep the top k singular values." },
+    { q: "Cosine similarity between (1, 0) and (1, 1) is about:", o: ["0", "0.5", "0.707", "1"], a: 2, e: "1 / (1 · √2) ≈ 0.707." }
+  ]
+},
+{
+  id: 6, week: 1, code: "B6", title: "Probability, statistics and optimisation",
+  lands: "Hashing · Randomised algorithms · OS · EDA · Deep Learning · Big Data · Cloud",
+  topics: [
+    {
+      id: "d6t1", title: "Conditional probability and Bayes' theorem",
+      video: { yt: "E6FbvM-FGZ8", src: "MIT 6.042J (Fall 2010) · Lecture 19: Conditional Probability · Tom Leighton" },
+      notes: N`
+<p>$P(A \mid B) = \frac{P(A \cap B)}{P(B)}$. Total probability: $P(B) = \sum_i P(B\mid A_i)P(A_i)$. <b>Bayes:</b> $P(A\mid B) = \frac{P(B \mid A)P(A)}{P(B)}$.</p>
+<p>$A$ and $B$ are <b>independent</b> iff $P(A\cap B) = P(A)P(B)$. Do not confuse independence with mutual exclusion.</p>
+<div class="worked"><b>Worked example (base-rate fallacy).</b> An intrusion detector flags 99% of real attacks and wrongly flags 5% of normal sessions. Attacks are 1% of sessions. Given an alert:<br>
+$P(\text{attack}\mid\text{alert}) = \frac{0.99 \times 0.01}{0.99 \times 0.01 + 0.05 \times 0.99} = \frac{0.0099}{0.0594} \approx 16.7\%$.<br>Most alerts are false alarms — a strong opening for a security class.</div>
+<p class="lands"><b>Where it lands:</b> naive Bayes and spam filters (Machine Learning), intrusion detection (Cyber Security), A/B tests (UI/UX), fault diagnosis (Cloud).</p>`,
+      poll: { q: "Would the intrusion-detector example work as a class opener for you?", opts: ["Yes, as is", "Yes, with a medical example instead", "I'd use a spam-filter example", "Not relevant to my courses"] }
+    },
+    {
+      id: "d6t2", title: "Random variables and common distributions",
+      video: { yt: "-qCEoqpwjf4", src: "MIT 6.041 (Fall 2010) · Lecture 6: Discrete Random Variable Examples; Joint PMFs · John Tsitsiklis" },
+      notes: N`
+<table class="mini"><thead><tr><th>Distribution</th><th>Models</th><th>Mean</th><th>Variance</th></tr></thead><tbody>
+<tr><td>Bernoulli($p$)</td><td>one success/failure</td><td>$p$</td><td>$p(1-p)$</td></tr>
+<tr><td>Binomial($n,p$)</td><td>successes in $n$ trials</td><td>$np$</td><td>$np(1-p)$</td></tr>
+<tr><td>Geometric($p$)</td><td>trials to first success</td><td>$1/p$</td><td>$(1-p)/p^2$</td></tr>
+<tr><td>Poisson($\lambda$)</td><td>arrivals per interval</td><td>$\lambda$</td><td>$\lambda$</td></tr>
+<tr><td>Exponential($\lambda$)</td><td>time between arrivals</td><td>$1/\lambda$</td><td>$1/\lambda^2$</td></tr>
+<tr><td>Normal($\mu,\sigma^2$)</td><td>sums of many effects</td><td>$\mu$</td><td>$\sigma^2$</td></tr>
+</tbody></table>
+<p>The exponential distribution is <b>memoryless</b>: $P(X > s + t \mid X > s) = P(X > t)$. That is why M/M/1 queues are analysable.</p>
+<div class="worked"><b>Worked example.</b> A probe in open addressing succeeds with probability $p = 1 - \alpha$. The number of probes is geometric, so the expected count is $\frac{1}{1-\alpha}$ — with $\alpha = 0.75$, four probes.</div>
+<p class="lands"><b>Where it lands:</b> hashing (DSA), queueing and scheduling (OS, Cloud), noise models (Image Processing), likelihoods and loss functions (Deep Learning).</p>`,
+      poll: { q: "Which distribution do your students meet first in a CS context?", opts: ["Uniform (hashing, random pivots)", "Binomial", "Poisson / exponential (queues)", "Normal (data)"] }
+    },
+    {
+      id: "d6t3", title: "Expectation and indicator variables",
+      video: { yt: "gGlMSe7uEkA", src: "MIT 6.042J (Fall 2010) · Lecture 22: Expectation I · Tom Leighton" },
+      notes: N`
+<p><b>Linearity of expectation:</b> $E[X + Y] = E[X] + E[Y]$ always — even when $X$ and $Y$ are dependent. Combine it with <b>indicator variables</b> ($I_A = 1$ if $A$ happens, else 0, so $E[I_A] = P(A)$) and many analyses become one line.</p>
+<div class="worked"><b>Worked example 1 (hash collisions).</b> $n$ keys hashed uniformly into $m$ slots. For each pair let $I_{ij}=1$ if they collide; $P = 1/m$. Expected collisions $= \binom{n}{2}\frac1m = \frac{n(n-1)}{2m}$.<br><br>
+<b>Worked example 2 (birthday).</b> With 23 people and 365 days, the probability of a shared birthday is about 50.7%. A hash of $b$ bits starts colliding after roughly $2^{b/2}$ items.<br><br>
+<b>Worked example 3 (randomised quicksort).</b> Elements $i<j$ (in sorted order) are compared iff one of them is the first pivot chosen among $i..j$: probability $\frac{2}{j-i+1}$. Summing gives $E[\text{comparisons}] \approx 2n\ln n \approx 1.39\, n\log_2 n$.</div>
+<p class="lands"><b>Where it lands:</b> hashing and quicksort (DSA, DAA), Bloom filters and sketches (Advanced DS, Big Data), birthday attacks (Information Security).</p>`,
+      poll: { q: "Do you currently analyse randomised quicksort's average case in class?", opts: ["Yes, with indicator variables", "Yes, via the recurrence", "I state the result only", "Not in my syllabus"] }
+    },
+    {
+      id: "d6t4", title: "Optimisation: convexity and gradient descent",
+      video: { yt: "AeRwohPuUHQ", src: "MIT 18.065 (Spring 2018) · Lecture 22: Gradient Descent: Downhill to a Minimum · Gilbert Strang" },
+      notes: N`
+<p>A function is <b>convex</b> if $f(\theta x + (1-\theta)y) \le \theta f(x) + (1-\theta)f(y)$. For convex functions every local minimum is global — so gradient descent cannot get trapped.</p>
+<p><b>Gradient descent:</b> $w_{k+1} = w_k - \eta\, \nabla f(w_k)$. The learning rate $\eta$ trades speed against stability.</p>
+<div class="worked"><b>Worked example.</b> $f(w) = w^2$, $\nabla f = 2w$, so $w_{k+1} = (1 - 2\eta)w_k$.<br>
+With $\eta = 0.1$ from $w_0 = 10$: $10 \to 8 \to 6.4 \to 5.12 \to \dots$ (converges).<br>
+With $\eta > 1$: $|1 - 2\eta| > 1$, so the iterates blow up — the classic "learning rate too high" failure.</div>
+<ul>
+<li><b>Constrained optimisation:</b> Lagrange multipliers turn "minimise $f$ subject to $g = 0$" into solving $\nabla f = \lambda \nabla g$.</li>
+<li><b>Linear programming:</b> linear objective, linear constraints; the optimum is at a vertex of the feasible polytope.</li>
+</ul>
+<p class="lands"><b>Where it lands:</b> training every model (Machine Learning, Deep Learning), resource allocation (Cloud, OS), SVMs and regularisation (ML electives).</p>`,
+      poll: { q: "What do your students find hardest about gradient descent?", opts: ["Choosing the learning rate", "Why the gradient points uphill", "Local vs global minima", "Turning the maths into code"] }
+    }
+  ],
+  quiz: [
+    { q: "A detector catches 99% of attacks, false-alarms on 5% of normal sessions, and 1% of sessions are attacks. P(attack | alert) is about:", o: ["99%", "50%", "17%", "5%"], a: 2, e: "0.0099 / (0.0099 + 0.0495) ≈ 0.167." },
+    { q: "Expected number of trials until the first success, with success probability p:", o: ["p", "1 − p", "1 / p", "p / (1 − p)"], a: 2, e: "A geometric random variable has mean 1/p." },
+    { q: "Expected number of colliding pairs when n keys are hashed uniformly into m slots:", o: ["n / m", N`$n(n-1)/(2m)$`, N`$n^2/m^2$`, "m / n"], a: 1, e: "C(n,2) pairs, each colliding with probability 1/m." },
+    { q: N`Gradient descent on $f(w) = w^2$ with $\eta = 0.1$, starting from $w = 10$. After one step $w$ is:`, o: ["9.8", "8", "6", "−10"], a: 1, e: "w − η·2w = 10 − 0.1·20 = 8." },
+    { q: "Which distribution is memoryless?", o: ["Normal", "Uniform", "Exponential", "Binomial"], a: 2, e: "P(X > s + t | X > s) = P(X > t) holds only for the exponential (and the geometric in discrete time)." }
+  ]
+},
+
+/* ============================ WEEK 2 ============================ */
+{
+  id: 7, week: 2, code: "S2", title: "Digital System Design and Programming in C",
+  lands: "24CSR205 Digital System Design · 24ESC204 Programming in C · 24EST023 FEEE",
+  topics: [
+    {
+      id: "d7t1", title: "Boolean minimisation with Karnaugh maps",
+      video: { yt: "VdRC2raV8fA", src: "MIT 6.004 Computation Structures (Spring 2017) · 4.2.5 Karnaugh Maps · Chris Terman" },
+      notes: N`
+<p>Write the function as a sum of <b>minterms</b>. Lay the K-map out in <b>Gray-code order</b> (00, 01, 11, 10) so neighbouring cells differ in one variable — including the wrap-around edges.</p>
+<ol>
+<li>Group 1s in rectangles of size $2^k$ (1, 2, 4, 8 …), as large as possible.</li>
+<li>Every 1 must be covered; overlaps are allowed. Use don't-cares (X) only when they enlarge a group.</li>
+<li>Each group of $2^k$ cells eliminates $k$ variables. Pick all <b>essential prime implicants</b> first.</li>
+</ol>
+<div class="worked"><b>Worked example.</b> $F(A,B,C) = \sum m(0,2,4,6)$. Minterms 000, 010, 100, 110 all have $C = 0$; they form one group of four, so $F = \overline{C}$.</div>
+<p>Beyond five variables use the <b>Quine–McCluskey</b> tabulation, which is the same idea done systematically — and the algorithm students can code in the lab.</p>
+<p class="lands"><b>Where it lands:</b> combinational design (DSD), logic synthesis tools, CNF/DNF links back to Day 1 logic.</p>`,
+      poll: { q: "How do you check students' K-map groupings at scale?", opts: ["Hand-marking", "Truth-table verification in a simulator", "Peer checking", "Auto-graded online tool"] }
+    },
+    {
+      id: "d7t2", title: "Codes, error correction and sequential logic",
+      video: { search: "NPTEL Hamming code Gray code flip flop excitation table sequential circuits" },
+      notes: N`
+<ul>
+<li><b>Gray code:</b> $g = b \oplus (b \gg 1)$; consecutive values differ in one bit (rotary encoders, K-maps).</li>
+<li><b>Hamming distance</b> $d$ between codewords: detects $d-1$ errors, corrects $\lfloor (d-1)/2 \rfloor$.</li>
+<li><b>Hamming code:</b> $r$ parity bits protect $m$ data bits when $2^r \ge m + r + 1$. For 4 data bits, $r = 3$: the (7,4) code, parity in positions 1, 2, 4, corrects any single-bit error.</li>
+</ul>
+<h4>Flip-flop characteristic equations</h4>
+<p>D: $Q^+ = D$ &nbsp;·&nbsp; T: $Q^+ = T \oplus Q$ &nbsp;·&nbsp; JK: $Q^+ = J\overline{Q} + \overline{K}Q$ &nbsp;·&nbsp; SR: $Q^+ = S + \overline{R}Q$ (with $SR = 0$).</p>
+<p>A mod-$N$ counter needs $\lceil \log_2 N \rceil$ flip-flops. State minimisation merges equivalent states by partition refinement — the same algorithm as DFA minimisation.</p>
+<div class="worked"><b>Worked example.</b> Gray code of 1011: $1011 \oplus 0101 = 1110$.</div>
+<p class="lands"><b>Where it lands:</b> sequential design (DSD), memory ECC (Computer Organisation), data link layer CRC and parity (Computer Networks).</p>`,
+      poll: { q: "Do you connect state minimisation in DSD to DFA minimisation in Theory of Computation?", opts: ["Yes, explicitly", "I mention it briefly", "No", "I didn't know they were the same algorithm"] }
+    },
+    {
+      id: "d7t3", title: "Numerics in C: overflow, floats and bits",
+      video: { search: "NPTEL programming in C floating point representation bitwise operators" },
+      notes: N`
+<ul>
+<li><b>Unsigned</b> arithmetic wraps modulo $2^n$. <b>Signed overflow</b> is undefined behaviour in C — the compiler may assume it never happens.</li>
+<li>C99 integer division truncates toward zero: $-7/2 = -3$ and $-7 \% 2 = -1$ (so that $(a/b)\cdot b + a\%b = a$).</li>
+<li>Never compare floats with <code>==</code>; use <code>fabs(a - b) &lt; eps * fmax(fabs(a), fabs(b))</code>.</li>
+<li>Summing many small floats into a large total loses precision; Kahan summation fixes it.</li>
+</ul>
+<h4>Bit identities worth drilling</h4>
+<ul>
+<li><code>x &amp; (x - 1)</code> clears the lowest set bit; <code>x &gt; 0 &amp;&amp; (x &amp; (x - 1)) == 0</code> tests for a power of two.</li>
+<li><code>x &amp; -x</code> isolates the lowest set bit (used in Fenwick trees).</li>
+<li>Set / clear / toggle bit $k$: <code>x | (1&lt;&lt;k)</code>, <code>x &amp; ~(1&lt;&lt;k)</code>, <code>x ^ (1&lt;&lt;k)</code>.</li>
+</ul>
+<div class="worked"><b>Worked example.</b> In a row-major <code>int a[R][C]</code>, element <code>a[i][j]</code> sits at <code>base + (i*C + j) * sizeof(int)</code>. Pointer arithmetic is this formula, nothing more.</div>
+<p class="lands"><b>Where it lands:</b> Programming in C labs, Computer Organisation, embedded and HPC code, Fenwick trees (Advanced DS).</p>`,
+      poll: { q: "Which C numeric pitfall costs your students the most marks?", opts: ["Integer overflow", "Float equality comparison", "Integer division / modulo of negatives", "Bit operator precedence"] }
+    }
+  ],
+  quiz: [
+    { q: N`$F(A,B,C) = \sum m(0,2,4,6)$ simplifies to:`, o: [N`$\overline{A}$`, N`$\overline{C}$`, N`$\overline{A}\,\overline{C}$`, "B"], a: 1, e: "All four minterms have C = 0 and form one group of four." },
+    { q: "How many parity bits does a single-error-correcting Hamming code need for 4 data bits?", o: ["2", "3", "4", "7"], a: 1, e: "Smallest r with 2ʳ ≥ 4 + r + 1 is r = 3 (the (7,4) code)." },
+    { q: "In C99, -7 % 2 evaluates to:", o: ["1", "−1", "3", "Undefined"], a: 1, e: "Division truncates toward zero (−7/2 = −3), and (−3)·2 + (−1) = −7." },
+    { q: "For x > 0, (x & (x − 1)) == 0 tests whether x is:", o: ["Even", "Odd", "A power of two", "A perfect square"], a: 2, e: "A power of two has exactly one set bit, which x & (x − 1) clears." },
+    { q: "The Gray code of binary 1011 is:", o: ["1101", "1110", "0111", "1001"], a: 1, e: "g = b XOR (b >> 1) = 1011 XOR 0101 = 1110." }
+  ]
+},
+{
+  id: 8, week: 2, code: "S3", title: "Data Structures and Algorithms",
+  lands: "24CST303 Data Structures and Algorithms · 24CSL306 Data Structure Lab",
+  topics: [
+    {
+      id: "d8t1", title: "Cost models and loop analysis",
+      video: { yt: "ZA-tUyM_y7s", src: "MIT 6.006 (Spring 2020) · Lecture 1: Algorithms and Computation · Jason Ku" },
+      notes: N`
+<p>In the <b>word-RAM model</b> each arithmetic operation, comparison and memory access costs one unit. Analyse best, worst and average case separately.</p>
+<table class="mini"><thead><tr><th>Loop pattern</th><th>Count</th><th>Order</th></tr></thead><tbody>
+<tr><td><code>for i in 1..n: for j in 1..i</code></td><td>$\frac{n(n+1)}{2}$</td><td>$\Theta(n^2)$</td></tr>
+<tr><td><code>for (i = 1; i &lt; n; i *= 2)</code></td><td>$\lceil \log_2 n \rceil$</td><td>$\Theta(\log n)$</td></tr>
+<tr><td><code>for i in 1..n: for (j = i; j &lt;= n; j += i)</code></td><td>$\sum_i n/i = nH_n$</td><td>$\Theta(n \log n)$</td></tr>
+<tr><td><code>for i in 1..n: for (j = 1; j &lt; n; j *= 2)</code></td><td>$n \lceil \log_2 n\rceil$</td><td>$\Theta(n\log n)$</td></tr>
+</tbody></table>
+<div class="worked"><b>Teaching tip.</b> Before applying any rule, ask students to write the exact sum of the inner-loop counts. The third row surprises them: it looks quadratic but the harmonic sum makes it $n\log n$ — the same structure as the sieve of Eratosthenes.</div>
+<p class="lands"><b>Where it lands:</b> every unit of DSA and DAA, lab complexity reports.</p>`,
+      poll: { q: "How do your students usually state an algorithm's complexity?", opts: ["Counting loops informally", "Writing explicit sums", "Pattern-matching familiar algorithms", "Measuring run time in the lab"] }
+    },
+    {
+      id: "d8t2", title: "Dynamic arrays and amortised cost",
+      video: { yt: "CHhwJjR0mZA", src: "MIT 6.006 (Spring 2020) · Lecture 2: Data Structures and Dynamic Arrays · Erik Demaine" },
+      notes: N`
+<p>A dynamic array (Python list, C++ vector, Java ArrayList) doubles its capacity when full. One append may cost $\Theta(n)$ for the copy, but the <b>amortised</b> cost per append is $O(1)$.</p>
+<div class="worked"><b>Aggregate method.</b> Over $n$ appends the copies cost $1 + 2 + 4 + \dots + n/2 < n$; adding $n$ writes gives fewer than $3n$ operations in total, so $O(1)$ each.<br><br>
+<b>Accounting method.</b> Charge 3 units per append: 1 pays for the write, 2 are banked and later pay for copying this element and one older element at the next doubling.</div>
+<p><b>Why not grow by a constant $c$?</b> Copies then cost $c + 2c + 3c + \dots \approx \frac{n^2}{2c}$, i.e. $\Theta(n)$ per append. Geometric growth is essential; any factor $> 1$ works (1.5 is common).</p>
+<p>Shrink at quarter-full, not half-full, or alternating push/pop at the boundary thrashes.</p>
+<p class="lands"><b>Where it lands:</b> stacks and queues (DSA), hash table resizing (DSA), potential method (Advanced Data Structures).</p>`,
+      poll: { q: "Do you teach amortised analysis in the first DSA course?", opts: ["Yes, aggregate method", "Yes, accounting / potential", "Only informally", "No, it's left to DAA"] }
+    },
+    {
+      id: "d8t3", title: "The mathematics of hashing",
+      video: { yt: "0M_kIqhwbFo", src: "MIT 6.006 (Fall 2011) · Lecture 8: Hashing with Chaining · Erik Demaine" },
+      notes: N`
+<p>Under <b>simple uniform hashing</b> each key is equally likely to land in any of $m$ slots. The <b>load factor</b> is $\alpha = n/m$.</p>
+<ul>
+<li><b>Chaining:</b> expected search cost $\Theta(1 + \alpha)$ — constant if $m = \Theta(n)$.</li>
+<li><b>Open addressing:</b> expected probes for an unsuccessful search $\le \frac{1}{1-\alpha}$; for a successful one $\le \frac{1}{\alpha}\ln\frac{1}{1-\alpha}$.</li>
+<li>Division method $h(k) = k \bmod m$: choose $m$ prime and away from powers of 2.</li>
+<li><b>Universal hashing:</b> pick $h_{a,b}(k) = ((ak + b) \bmod p) \bmod m$ at random; any two keys collide with probability $\le 1/m$, defeating adversarial inputs.</li>
+</ul>
+<div class="worked"><b>Worked example.</b> At $\alpha = 0.5$ an unsuccessful open-addressing search expects at most 2 probes; at $\alpha = 0.75$, 4; at $\alpha = 0.9$, 10. This is why libraries resize around 0.7–0.75.</div>
+<p class="lands"><b>Where it lands:</b> symbol tables (DSA, Compiler Design), hash joins and hash indexes (DBMS), Bloom filters (Advanced DS), consistent hashing (Cloud).</p>`,
+      poll: { q: "Which collision strategy do you implement in the DS lab?", opts: ["Separate chaining", "Linear probing", "Quadratic probing / double hashing", "All of them"] }
+    },
+    {
+      id: "d8t4", title: "Trees, heaps and the sorting lower bound",
+      video: { yt: "Xnpo1atN-Iw", src: "MIT 6.006 (Spring 2020) · Lecture 8: Binary Heaps · Erik Demaine" },
+      notes: N`
+<ul>
+<li>A binary tree with $n$ nodes has height (in edges) between $\lfloor \log_2 n \rfloor$ and $n-1$.</li>
+<li>In an array-based complete tree (0-indexed): children of $i$ are $2i+1$, $2i+2$; parent is $\lfloor (i-1)/2 \rfloor$.</li>
+<li><b>Build-heap is $O(n)$</b>, not $O(n\log n)$: at most $n/2^{h+1}$ nodes sit at height $h$, so total work $\le \sum_h \frac{n}{2^{h+1}} h \le n \sum_h \frac{h}{2^{h+1}} = n$.</li>
+<li><b>AVL height</b> $\le 1.44 \log_2(n+2)$: the minimum node count of an AVL tree of height $h$ satisfies a Fibonacci recurrence.</li>
+</ul>
+<div class="worked"><b>Sorting lower bound.</b> Any comparison sort is a binary decision tree with at least $n!$ leaves, so its height is at least $\log_2 n! = \Theta(n\log n)$ by Stirling. Counting sort and radix sort escape this only because they do not compare.</div>
+<p class="lands"><b>Where it lands:</b> heaps and priority queues (DSA), Dijkstra and Prim (DAA), B+ trees (DBMS), heap scheduling (OS).</p>`,
+      poll: { q: "Do you prove that build-heap runs in O(n)?", opts: ["Yes, with the sum", "I give the intuition only", "I state it", "We treat it as O(n log n)"] }
+    }
+  ],
+  quiz: [
+    { q: "How many times does for (i = 1; i < n; i *= 2) execute its body?", o: [N`$\Theta(1)$`, N`$\Theta(\log n)$`, N`$\Theta(n)$`, N`$\Theta(n\log n)$`], a: 1, e: "i doubles each time, reaching n after about log₂ n steps." },
+    { q: "With capacity doubling, the amortised cost of one append to a dynamic array is:", o: [N`$O(1)$`, N`$O(\log n)$`, N`$O(n)$`, N`$O(n^2)$`], a: 0, e: "Total cost for n appends is under 3n." },
+    { q: "With open addressing at load factor 0.75, an unsuccessful search expects at most how many probes?", o: ["1.33", "2", "4", "7.5"], a: 2, e: "1 / (1 − α) = 1 / 0.25 = 4." },
+    { q: "Building a binary heap from n unsorted elements (bottom-up) takes:", o: [N`$O(\log n)$`, N`$O(n)$`, N`$O(n\log n)$`, N`$O(n^2)$`], a: 1, e: "Σ h · n / 2^(h+1) ≤ n." },
+    { q: "The minimum height (in edges) of a binary tree with 15 nodes is:", o: ["3", "4", "7", "14"], a: 0, e: "A perfect binary tree of height 3 holds 2⁴ − 1 = 15 nodes." }
+  ]
+},
+{
+  id: 9, week: 2, code: "S4", title: "DAA, Operating System and DBMS",
+  lands: "24CST403 DAA · 24CST402 OS · 24CSR404 DBMS · 24MAT411 Graph Theory (bridge)",
+  topics: [
+    {
+      id: "d9t1", title: "Master theorem in practice",
+      video: { yt: "09vU-wVwW3U", src: "MIT 6.046J (Spring 2015) · Recitation 1: Divide & Conquer, Master Theorem, Strassen's Algorithm" },
+      notes: N`
+<p>For $T(n) = aT(n/b) + f(n)$, compute the <b>watershed</b> $n^{\log_b a}$ and compare.</p>
+<table class="mini"><thead><tr><th>Algorithm</th><th>Recurrence</th><th>$n^{\log_b a}$</th><th>Result</th></tr></thead><tbody>
+<tr><td>Binary search</td><td>$T(n/2) + 1$</td><td>$n^0 = 1$</td><td>$\Theta(\log n)$</td></tr>
+<tr><td>Merge sort</td><td>$2T(n/2) + n$</td><td>$n$</td><td>$\Theta(n\log n)$</td></tr>
+<tr><td>Karatsuba</td><td>$3T(n/2) + n$</td><td>$n^{1.585}$</td><td>$\Theta(n^{1.585})$</td></tr>
+<tr><td>Strassen</td><td>$7T(n/2) + n^2$</td><td>$n^{2.807}$</td><td>$\Theta(n^{2.807})$</td></tr>
+<tr><td>Naive D&amp;C matmul</td><td>$8T(n/2) + n^2$</td><td>$n^3$</td><td>$\Theta(n^3)$</td></tr>
+</tbody></table>
+<div class="worked"><b>Where it fails.</b> $T(n) = 2T(n/2) + n/\log n$: $f$ is smaller than $n$ but not polynomially smaller, so none of the three cases apply. The recursion tree gives $\Theta(n \log\log n)$. Also outside scope: $T(n) = T(n-1) + n$ (subtract, not divide) — unroll it to get $\Theta(n^2)$.</div>
+<p class="lands"><b>Where it lands:</b> DAA divide-and-conquer unit, FFT (Image Processing), parallel recursion (HPC).</p>`,
+      poll: { q: "Do your exam questions include recurrences outside the master theorem?", opts: ["Yes, regularly", "Occasionally", "Never", "I'd like a ready bank of them"] }
+    },
+    {
+      id: "d9t2", title: "P, NP and polynomial-time reductions",
+      video: { yt: "JbafQJx1CIA", src: "MIT 6.006 (Spring 2020) · Lecture 19: Complexity · Erik Demaine" },
+      notes: N`
+<ul>
+<li><b>P</b>: decision problems solvable in polynomial time. <b>NP</b>: problems whose "yes" answers have a certificate checkable in polynomial time.</li>
+<li>$A \le_p B$ (A reduces to B): a polynomial-time map $f$ with $x \in A \iff f(x) \in B$. Then B is at least as hard as A.</li>
+<li><b>NP-hard:</b> every NP problem reduces to it. <b>NP-complete:</b> NP-hard and in NP.</li>
+<li>Cook–Levin: SAT is NP-complete. Classic chain: SAT → 3-SAT → Clique → Vertex Cover → Hamiltonian Cycle → TSP.</li>
+</ul>
+<div class="worked"><b>The direction students reverse.</b> To prove a new problem X is NP-hard, reduce a <i>known</i> NP-complete problem <i>to</i> X. Reducing X to SAT only shows X is in NP (if the reduction is efficient), not that X is hard.<br><br>
+<b>Approximation.</b> Take both endpoints of every edge in a maximal matching: this vertex cover is at most twice the optimum, because any cover must contain at least one endpoint of each matched edge.</div>
+<p class="lands"><b>Where it lands:</b> DAA complexity unit, register allocation (Compiler Design), scheduling (OS, HPC), cryptographic hardness (Information Security).</p>`,
+      poll: { q: "How do you make the direction of a reduction stick?", opts: ["\"Known hard problem → new problem\" mantra", "Diagrams with arrows", "Worked examples only", "It doesn't stick yet"] }
+    },
+    {
+      id: "d9t3", title: "OS mathematics: scheduling, queues and memory",
+      video: { search: "NPTEL operating systems CPU scheduling effective memory access time TLB paging" },
+      notes: N`
+<ul>
+<li>Turnaround = completion − arrival; waiting = turnaround − burst. <b>SJF minimises average waiting time</b> (exchange argument: swapping a longer job ahead of a shorter one never helps).</li>
+<li><b>Little's law:</b> $L = \lambda W$ — average jobs in the system = arrival rate × average time in system. It holds for any stable queue.</li>
+<li><b>M/M/1:</b> utilisation $\rho = \lambda/\mu$, mean response time $W = \frac{1}{\mu - \lambda}$. Delay explodes as $\rho \to 1$.</li>
+<li><b>Effective access time</b> with a TLB hit ratio $h$: $EAT = h(t_{TLB} + t_m) + (1-h)(t_{TLB} + 2t_m)$.</li>
+<li>Page table size: 32-bit addresses, 4 KB pages → $2^{20}$ entries × 4 B = 4 MB per process, which motivates multi-level paging.</li>
+<li><b>Banker's algorithm:</b> $\text{Need} = \text{Max} - \text{Allocation}$; safe if processes can finish in some order with $\text{Need}_i \le \text{Work}$.</li>
+</ul>
+<div class="worked"><b>Worked example.</b> $h = 0.9$, $t_{TLB} = 10$ ns, $t_m = 100$ ns: $EAT = 0.9(110) + 0.1(210) = 99 + 21 = 120$ ns.<br>
+A web server receives 10 requests/s, each spending 0.5 s in the system on average: by Little's law, 5 requests are in the system at any time.</div>
+<p class="lands"><b>Where it lands:</b> OS scheduling, memory and deadlock units; autoscaling and capacity planning (Cloud).</p>`,
+      poll: { q: "Do you teach Little's law in the OS course?", opts: ["Yes", "No, but I'd add it", "No, not needed", "It's covered in Computer Networks"] }
+    },
+    {
+      id: "d9t4", title: "DBMS: functional dependencies and normalisation",
+      video: { search: "NPTEL database functional dependency attribute closure normalization BCNF" },
+      notes: N`
+<p><b>Armstrong's axioms</b> are sound and complete: reflexivity ($Y \subseteq X \Rightarrow X \to Y$), augmentation ($X\to Y \Rightarrow XZ \to YZ$), transitivity.</p>
+<p><b>Attribute closure</b> $X^+$: start with $X$; repeatedly add $B$ whenever some $Y \to B$ has $Y \subseteq X^+$. $X$ is a superkey iff $X^+$ contains every attribute. This is a transitive closure — Day 4 again.</p>
+<div class="worked"><b>Worked example.</b> $R(A,B,C,D,E)$ with $F = \{A \to B,\ B \to C,\ CD \to E\}$.<br>
+$(AD)^+$: $\{A, D\} \to$ add $B$ ($A\to B$) $\to$ add $C$ ($B\to C$) $\to$ add $E$ ($CD \to E$) $= ABCDE$. So $AD$ is a key; $A$ and $D$ must be in every key because nothing determines them.</div>
+<ul>
+<li><b>BCNF:</b> for every non-trivial $X \to Y$, $X$ is a superkey. <b>3NF</b> also allows $Y$ to be prime.</li>
+<li><b>Lossless join</b> for $R \to (R_1, R_2)$: $R_1 \cap R_2 \to R_1$ or $R_1 \cap R_2 \to R_2$.</li>
+<li><b>B+ tree height</b> with fan-out $f$ over $N$ keys: $\lceil \log_f N \rceil$. With $f = 200$, three levels index 8 million keys.</li>
+</ul>
+<p class="lands"><b>Where it lands:</b> DBMS design unit and lab, query cost estimation, Advanced Database Systems (PE-2).</p>`,
+      poll: { q: "Which normalisation step do students struggle with most?", opts: ["Finding candidate keys", "Minimal cover", "BCNF decomposition", "Lossless-join test"] }
+    }
+  ],
+  quiz: [
+    { q: N`$T(n) = 7T(n/2) + n^2$ solves to:`, o: [N`$\Theta(n^2)$`, N`$\Theta(n^2 \log n)$`, N`$\Theta(n^{\log_2 7})$`, N`$\Theta(n^3)$`], a: 2, e: "n^(log₂7) ≈ n^2.81 dominates n², so master theorem case 1 applies." },
+    { q: "To prove a new problem X is NP-hard you should:", o: ["Reduce X to SAT", "Reduce a known NP-complete problem to X", "Show X has a polynomial verifier", "Show X is not in P"], a: 1, e: "Hardness flows from the known problem to the new one." },
+    { q: "TLB hit ratio 0.9, TLB 10 ns, memory 100 ns. The effective access time is:", o: ["100 ns", "110 ns", "120 ns", "210 ns"], a: 2, e: "0.9 × 110 + 0.1 × 210 = 120 ns." },
+    { q: "With F = {A → B, B → C, CD → E}, the closure (AD)⁺ is:", o: ["AD", "ABD", "ABCD", "ABCDE"], a: 3, e: "A gives B, B gives C, then CD gives E." },
+    { q: "A server gets 10 requests/s and each stays 0.5 s on average. How many requests are in the system on average?", o: ["0.05", "2", "5", "20"], a: 2, e: "Little's law: L = λW = 10 × 0.5 = 5." }
+  ]
+},
+{
+  id: 10, week: 2, code: "PE-1", title: "S4 Programme Elective I",
+  lands: "24CSE411 Adv. Data Structures · 24CSE413 Information Security · 24CSE416 EDA · 24CSE414 Functional Prog. · 24CSE412 UI/UX",
+  topics: [
+    {
+      id: "d10t1", title: "Amortised and probabilistic data structures",
+      video: { yt: "3MpzavN3Mco", src: "MIT 6.046J (Spring 2015) · Lecture 5: Amortization: Amortized Analysis · Erik Demaine" },
+      notes: N`
+<p>The <b>potential method</b> assigns the data structure a potential $\Phi \ge 0$. Amortised cost = actual cost + $\Delta\Phi$. Expensive operations are paid for by a drop in potential that cheap operations built up.</p>
+<ul>
+<li>Splay trees: $O(\log n)$ amortised per access (access lemma with $\Phi = \sum \log(\text{subtree size})$).</li>
+<li>Fibonacci heaps: decrease-key $O(1)$ amortised; node degree $\le \log_\varphi n$.</li>
+<li>Union–find with union by rank and path compression: $O(\alpha(n))$ per operation, where $\alpha$ is the inverse Ackermann function ($\le 4$ in practice).</li>
+<li>Skip lists: expected height $O(\log n)$ because each level keeps half the keys.</li>
+</ul>
+<div class="worked"><b>Bloom filter.</b> $m$ bits, $k$ hash functions, $n$ inserted items. False-positive rate $\approx (1 - e^{-kn/m})^k$, minimised at $k = \frac{m}{n}\ln 2$. With 10 bits per item, $k \approx 7$ and the false-positive rate is about 0.8%.</div>
+<p class="lands"><b>Where it lands:</b> Advanced Data Structures, network routers and caches (Computer Networks), databases and big-data systems (Big Data Analytics).</p>`,
+      poll: { q: "Which amortised method do you prefer to teach first?", opts: ["Aggregate", "Accounting (banker's)", "Potential (physicist's)", "Depends on the structure"] }
+    },
+    {
+      id: "d10t2", title: "Number theory for security: RSA and Diffie–Hellman",
+      video: { yt: "9TNI2wHmaeI", src: "MIT 6.046J (Spring 2015) · Lecture 22: Cryptography: Encryption · Srini Devadas" },
+      notes: N`
+<h4>RSA in four lines</h4>
+<ol>
+<li>Choose primes $p, q$; set $n = pq$ and $\varphi(n) = (p-1)(q-1)$.</li>
+<li>Choose $e$ with $\gcd(e, \varphi(n)) = 1$; compute $d = e^{-1} \bmod \varphi(n)$ (extended Euclid, Day 2).</li>
+<li>Encrypt $c = m^e \bmod n$; decrypt $m = c^d \bmod n$.</li>
+<li>Correctness: $ed = 1 + k\varphi(n)$, so $m^{ed} = m \cdot (m^{\varphi(n)})^k \equiv m$ by Euler's theorem.</li>
+</ol>
+<div class="worked"><b>Worked example.</b> $p = 5, q = 11$: $n = 55$, $\varphi = 40$. Take $e = 3$; $d = 27$ since $3 \times 27 = 81 = 2\cdot 40 + 1$. Message $m = 2$: $c = 2^3 = 8$. Decrypt $8^{27} \bmod 55 = 2$.</div>
+<ul>
+<li><b>Diffie–Hellman:</b> public $g, p$; Alice sends $g^a$, Bob sends $g^b$; both compute $g^{ab} \bmod p$. Security rests on the discrete logarithm problem.</li>
+<li><b>Birthday bound:</b> an $n$-bit hash has collisions after about $2^{n/2}$ attempts, so 128-bit security needs a 256-bit hash.</li>
+<li><b>Password entropy:</b> $\log_2(\text{alphabet}^{\text{length}})$ bits — 8 random lowercase letters give about 37.6 bits.</li>
+</ul>
+<p class="lands"><b>Where it lands:</b> Information Security (PE-1), Advanced Information Security (PE-3), Cyber Security electives, TLS in Computer Networks.</p>`,
+      poll: { q: "Do you run RSA with small primes by hand in class?", opts: ["Yes, on the board", "Yes, in a Python lab", "Only show the formulas", "Not in my syllabus"] }
+    },
+    {
+      id: "d10t3", title: "Statistics for exploratory data analytics and PCA",
+      video: { yt: "Y4f7K9XF04k", src: "MIT 18.065 (Spring 2018) · Lecture 7: Eckart–Young, the Closest Rank-k Matrix (PCA) · Gilbert Strang" },
+      notes: N`
+<ul>
+<li><b>Centre and spread:</b> mean vs median (median resists outliers); variance $s^2 = \frac{1}{n-1}\sum (x_i - \bar x)^2$; IQR $= Q_3 - Q_1$.</li>
+<li><b>Outliers (box-plot rule):</b> below $Q_1 - 1.5\,\mathrm{IQR}$ or above $Q_3 + 1.5\,\mathrm{IQR}$. <b>z-score</b> $z = (x - \bar x)/s$; $|z| > 3$ is a common flag.</li>
+<li><b>Correlation:</b> Pearson $r$ measures linear association; Spearman uses ranks and catches monotone non-linear trends. Correlation is not causation.</li>
+<li><b>Scaling:</b> min–max to [0, 1] or standardisation to mean 0, variance 1 — required before PCA and distance-based methods.</li>
+</ul>
+<h4>PCA</h4>
+<p>Centre the data, form the covariance matrix $C = \frac{1}{n-1}X^\top X$, and take its eigenvectors. The explained-variance ratio of component $i$ is $\lambda_i / \sum_j \lambda_j$. Keep components until the cumulative ratio reaches, say, 90%.</p>
+<div class="worked"><b>Worked example.</b> Eigenvalues 4.2, 1.1, 0.5, 0.2 → total 6.0. The first two components explain $(4.2 + 1.1)/6 \approx 88\%$ of the variance.</div>
+<p class="lands"><b>Where it lands:</b> Exploratory Data Analytics (PE-1), Machine Learning, Data Mining (PE-2), Big Data Analytics (PE-3).</p>`,
+      poll: { q: "Which tool do you use for EDA labs?", opts: ["Python (pandas, matplotlib)", "R", "Spreadsheet", "Power BI / Tableau"] }
+    },
+    {
+      id: "d10t4", title: "Lambda calculus and the quantitative laws of UI/UX",
+      video: { search: "NPTEL functional programming lambda calculus beta reduction" },
+      notes: N`
+<h4>Functional Programming</h4>
+<ul>
+<li>Terms: variables, abstraction $\lambda x.\,M$, application $M\,N$. <b>β-reduction</b>: $(\lambda x.\,M)\,N \to M[x := N]$.</li>
+<li>Currying: a two-argument function is $\lambda x.\,\lambda y.\,M$.</li>
+<li>Church booleans: $\mathrm{true} = \lambda x.\lambda y.\,x$, $\mathrm{false} = \lambda x.\lambda y.\,y$.</li>
+<li>Laws proved by structural induction (Day 1): $\mathrm{map}\ f \circ \mathrm{map}\ g = \mathrm{map}\ (f \circ g)$; foldr over append splits into two folds.</li>
+</ul>
+<div class="worked"><b>Worked example.</b> $(\lambda x.\, x \cdot x)\ 4 \to 4 \cdot 4 = 16$.</div>
+<h4>UI/UX Design</h4>
+<ul>
+<li><b>Fitts's law:</b> pointing time $T = a + b\log_2(1 + D/W)$; distance $D = 7$ and width $W = 1$ give an index of difficulty of 3 bits.</li>
+<li><b>Hick's law:</b> decision time $T = b\log_2(n + 1)$ for $n$ equally likely choices.</li>
+<li><b>A/B testing:</b> a two-proportion z-test decides whether a difference in conversion rates is more than chance.</li>
+</ul>
+<p class="lands"><b>Where it lands:</b> Functional Programming and UI/UX Design (PE-1), Programming Languages (PE-5).</p>`,
+      poll: { q: "Should FP and UI/UX faculty attend this joint session, or split it?", opts: ["Keep it joint", "Split into two sessions", "Make each optional", "No preference"] }
+    }
+  ],
+  quiz: [
+    { q: "RSA with p = 5, q = 11 and e = 3. The private exponent d is:", o: ["7", "13", "27", "37"], a: 2, e: "φ = 40 and 3 × 27 = 81 ≡ 1 (mod 40)." },
+    { q: "For a Bloom filter with m bits and n items, the optimal number of hash functions is about:", o: ["m / n", N`$(m/n)\ln 2$`, N`$\log_2 m$`, "n / m"], a: 1, e: "Minimising (1 − e^(−kn/m))^k gives k = (m/n) ln 2." },
+    { q: "By the box-plot rule, a value is an outlier if it lies above:", o: ["Q3", "Q3 + IQR", "Q3 + 1.5·IQR", "mean + 1.5·σ"], a: 2, e: "The whiskers end 1.5 IQR beyond the quartiles." },
+    { q: N`$(\lambda x.\, x \cdot x)\ 4$ β-reduces to:`, o: ["4", "8", "16", N`$\lambda x.\,16$`], a: 2, e: "Substitute 4 for x in x · x." },
+    { q: "Fitts's index of difficulty for D = 7, W = 1 is:", o: ["2 bits", "3 bits", "7 bits", "8 bits"], a: 1, e: "log₂(1 + 7/1) = log₂ 8 = 3." }
+  ]
+},
+{
+  id: 11, week: 2, code: "S6", title: "Compiler Design, HPC and Deep Learning",
+  lands: "24CST601 Compiler Design · 24CST602 HPC Systems · 24CSC604 Deep Learning · 24CSL607 HPC Lab",
+  topics: [
+    {
+      id: "d11t1", title: "Compiler mathematics: grammars, FIRST and FOLLOW",
+      video: { yt: "m9eHViDPAJQ", src: "MIT 18.404J (Fall 2020) · Lecture 4: Pushdown Automata, CFG ↔ PDA · Michael Sipser" },
+      notes: N`
+<p>The front end of a compiler is applied automata theory: regex → NFA → DFA → minimised DFA for the lexer (Day 4), and context-free grammars for the parser.</p>
+<ul>
+<li><b>Left recursion</b> breaks LL parsing. $E \to E + T \mid T$ becomes $E \to T E'$, $E' \to + T E' \mid \varepsilon$.</li>
+<li><b>FIRST(α)</b>: terminals that can begin a string derived from α. <b>FOLLOW(A)</b>: terminals that can appear right after A. Both are computed as <b>fixed points</b> — iterate until nothing changes.</li>
+<li><b>LL(1) condition:</b> for $A \to \alpha \mid \beta$, FIRST sets are disjoint, and if $\beta \Rightarrow^* \varepsilon$ then FIRST(α) ∩ FOLLOW(A) = ∅.</li>
+<li><b>LR items</b>: closure and goto are set operations that build the canonical collection; conflicts appear as two actions in one table cell.</li>
+</ul>
+<div class="worked"><b>Worked example.</b> For $E \to T E'$, $E' \to +TE' \mid \varepsilon$, $T \to \mathrm{id}$:<br>
+FIRST(T) = FIRST(E) = {id}; FIRST(E′) = {+, ε}; FOLLOW(E) = FOLLOW(E′) = {<code>$</code>}; FOLLOW(T) = {+, <code>$</code>}, where <code>$</code> marks end of input.</div>
+<p><b>Back end:</b> data-flow analysis runs monotone functions over a <b>lattice</b> to a fixed point (Day 4 partial orders); register allocation is <b>graph colouring</b> of the interference graph (NP-complete, Day 9, so heuristics are used).</p>
+<p class="lands"><b>Where it lands:</b> Compiler Design units 1–5, Theory of Computation, Programming Languages (PE-5).</p>`,
+      poll: { q: "Do your Compiler Design students get a hands-on FIRST/FOLLOW tool or code it themselves?", opts: ["They code it", "We use a ready tool", "Pen and paper only", "Both"] }
+    },
+    {
+      id: "d11t2", title: "Parallel performance models",
+      video: { yt: "dx98pqJvZVk", src: "MIT 6.172 (Fall 2018) · Lecture 6: Multicore Programming · Julian Shun" },
+      notes: N`
+<ul>
+<li>Speedup $S_p = T_1/T_p$; efficiency $E_p = S_p / p$.</li>
+<li><b>Amdahl's law</b> (fixed problem, serial fraction $f$): $S_p \le \frac{1}{f + (1-f)/p}$, and $S_\infty = 1/f$.</li>
+<li><b>Gustafson's law</b> (problem grows with $p$): $S_p = p - f(p - 1)$.</li>
+<li><b>Work–span:</b> work $T_1$, span $T_\infty$ (critical path), parallelism $T_1/T_\infty$. Brent's bound: $T_p \le T_1/p + T_\infty$.</li>
+<li><b>Roofline:</b> attainable FLOP/s $= \min(\text{peak}, \ \text{arithmetic intensity} \times \text{bandwidth})$, where intensity = FLOPs per byte moved.</li>
+</ul>
+<div class="worked"><b>Worked example.</b> 10% serial code on 16 cores: $S = \frac{1}{0.1 + 0.9/16} = \frac{1}{0.15625} = 6.4$. Even with infinite cores the ceiling is 10.<br><br>
+Matrix multiply does $2n^3$ FLOPs on $3n^2$ numbers, so its intensity grows with $n$ (compute-bound when blocked well); a vector add does 1 FLOP per 12 bytes (memory-bound always).</div>
+<p class="lands"><b>Where it lands:</b> HPC Systems and HPC Lab, GPU training (Deep Learning), cloud scaling (Cloud Computing).</p>`,
+      poll: { q: "Which parallel platform do you use in the HPC lab?", opts: ["OpenMP", "MPI", "CUDA / GPU", "A mix"] }
+    },
+    {
+      id: "d11t3", title: "Neural networks and backpropagation",
+      video: { yt: "uXt8qF2Zzfo", src: "MIT 6.034 Artificial Intelligence (Fall 2010) · Lecture 12a: Neural Nets · Patrick Winston" },
+      notes: N`
+<p>A layer computes $a = \sigma(Wx + b)$. A network composes layers, so its loss is a long composition of functions — and the chain rule (Day 5) gives every gradient.</p>
+<p><b>Backpropagation</b> is the chain rule evaluated from the output backwards over the computational graph, reusing each intermediate result once. Its cost is a small constant times the forward pass.</p>
+<ul>
+<li>Sigmoid: $\sigma'(z) = \sigma(z)(1 - \sigma(z)) \le 0.25$. Multiplying many such factors shrinks gradients — the <b>vanishing gradient</b>. ReLU's derivative is 0 or 1, which helps.</li>
+<li>Softmax + cross-entropy: with $p = \mathrm{softmax}(z)$ and one-hot $y$, $\frac{\partial L}{\partial z} = p - y$. Simple, and numerically stable when computed with log-sum-exp.</li>
+<li>MSE corresponds to a Gaussian likelihood; cross-entropy to a categorical likelihood (maximum likelihood, Day 6).</li>
+</ul>
+<div class="worked"><b>Worked example.</b> One neuron, $\hat y = \sigma(wx + b)$, loss $L = \tfrac12(\hat y - y)^2$.<br>
+$\frac{\partial L}{\partial w} = (\hat y - y)\cdot \hat y (1 - \hat y)\cdot x$ — three chain-rule factors: loss, activation, linear part.</div>
+<p class="lands"><b>Where it lands:</b> Deep Learning (S6 core), Machine Learning (S5), Advanced Deep Learning (PE-5).</p>`,
+      poll: { q: "Do students derive backprop by hand before using a framework?", opts: ["Yes, for a small network", "Only for one neuron", "No, framework first", "Not yet decided"] }
+    },
+    {
+      id: "d11t4", title: "Deep architectures: convolution, regularisation, attention",
+      video: { yt: "VrMHA3yX_QI", src: "MIT 6.034 Artificial Intelligence (Fall 2010) · Lecture 12b: Deep Neural Nets · Patrick Winston" },
+      notes: N`
+<ul>
+<li><b>Convolution output size:</b> $\frac{W - F + 2P}{S} + 1$ for input width $W$, filter $F$, padding $P$, stride $S$.</li>
+<li><b>Parameters</b> of a conv layer: $F \cdot F \cdot C_{in} \cdot C_{out} + C_{out}$ — independent of the image size (weight sharing).</li>
+<li><b>Regularisation:</b> L2 weight decay = Gaussian prior; L1 = Laplace prior (sparsity); dropout trains an implicit ensemble (scale by $1/(1-p)$ at train time).</li>
+<li><b>Initialisation:</b> Xavier $\mathrm{Var}(w) = \frac{2}{n_{in} + n_{out}}$; He $\mathrm{Var}(w) = \frac{2}{n_{in}}$ for ReLU — chosen to keep activation variance constant across layers.</li>
+<li><b>Adam:</b> moving averages $m_t$ of gradients and $v_t$ of squared gradients, bias-corrected; step $\eta\, \hat m_t / (\sqrt{\hat v_t} + \epsilon)$.</li>
+<li><b>Attention:</b> $\mathrm{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right)V$; dividing by $\sqrt{d_k}$ keeps dot products from saturating the softmax.</li>
+</ul>
+<div class="worked"><b>Worked example.</b> 32×32×3 input, 16 filters of 5×5, no padding, stride 1. Output 28×28×16; parameters $5\cdot 5\cdot 3\cdot 16 + 16 = 1{,}216$.</div>
+<p class="lands"><b>Where it lands:</b> Deep Learning, Image Processing & Computer Vision (PE-3), Large Language Models (PE-6).</p>`,
+      poll: { q: "Which architecture do you use for the first Deep Learning lab?", opts: ["MLP on MNIST", "CNN on CIFAR-10", "Transfer learning with a pretrained model", "RNN / text"] }
+    }
+  ],
+  quiz: [
+    { q: "If 10% of a program is serial, the maximum speedup on unlimited processors is:", o: ["9", "10", "90", "Unlimited"], a: 1, e: "Amdahl: S∞ = 1 / f = 1 / 0.1 = 10." },
+    { q: "A 32×32 input, 5×5 filter, padding 0, stride 1 gives an output of:", o: ["32×32", "30×30", "28×28", "27×27"], a: 2, e: "(32 − 5 + 0) / 1 + 1 = 28." },
+    { q: "For softmax followed by cross-entropy, the gradient with respect to the logits is:", o: ["y − p", "p − y", "p(1 − p)", "log p"], a: 1, e: "The softmax Jacobian and the log combine to give p − y." },
+    { q: "The maximum value of the sigmoid derivative is:", o: ["0.25", "0.5", "1", "e"], a: 0, e: "σ(1 − σ) peaks at σ = 0.5, giving 0.25." },
+    { q: "Why is E → E + T | T unsuitable for LL(1) parsing as written?", o: ["It is ambiguous", "It is left-recursive", "It has ε-productions", "It is not context-free"], a: 1, e: "A top-down parser would expand E forever without consuming input." }
+  ]
+},
+{
+  id: 12, week: 2, code: "PE-3", title: "S6 Programme Elective III and Open Elective I",
+  lands: "24CSE632 Image Proc. & CV · 24CSE633 Quantum Mechanics for QC · 24CSE635 Big Data · 24CSE631 SPM · 24CSE636 Cloud · 24CSO61N OE-1",
+  topics: [
+    {
+      id: "d12t1", title: "Fourier analysis and image geometry",
+      video: { yt: "iTMn0Kt18tg", src: "MIT 6.046J (Spring 2015) · Lecture 3: Divide & Conquer: FFT · Erik Demaine" },
+      notes: N`
+<ul>
+<li><b>DFT:</b> $X_k = \sum_{n=0}^{N-1} x_n e^{-2\pi i kn/N}$. The <b>FFT</b> computes it in $O(N\log N)$ by divide and conquer ($T(N) = 2T(N/2) + N$, Day 3).</li>
+<li><b>Convolution theorem:</b> convolution in space = pointwise product in frequency, so large filters are faster via FFT.</li>
+<li><b>Sampling theorem:</b> sample faster than twice the highest frequency or you get aliasing (moiré, jagged edges).</li>
+<li><b>Histogram equalisation:</b> map intensity $r$ to $s = (L-1)\,\mathrm{CDF}(r)$.</li>
+<li><b>Homogeneous coordinates:</b> translation becomes a matrix; a homography is a 3×3 matrix with 8 degrees of freedom, fixed by 4 point correspondences.</li>
+<li><b>Pinhole camera:</b> $x = K[R \mid t]X$ — intrinsics $K$, rotation $R$, translation $t$.</li>
+</ul>
+<div class="worked"><b>Worked example.</b> Filtering a 1024×1024 image with a 64×64 kernel directly takes about $2^{20} \cdot 2^{12} = 2^{32}$ multiplies. Via FFT it is roughly $3 \cdot 2^{20}\log_2 2^{20} \approx 6\times 10^7$ — about 70× fewer.</div>
+<p class="lands"><b>Where it lands:</b> Image Processing & Computer Vision (PE-3), Computer Graphics (OE-1), signal processing in Deep Learning.</p>`,
+      poll: { q: "Do your Image Processing students implement the FFT or call a library?", opts: ["Implement it", "Library only", "Both", "We skip frequency domain"] }
+    },
+    {
+      id: "d12t2", title: "Linear algebra of quantum computing",
+      video: { search: "NPTEL quantum computing qubit Dirac notation tensor product unitary" },
+      notes: N`
+<ul>
+<li>A qubit is a unit vector in $\mathbb{C}^2$: $|\psi\rangle = \alpha|0\rangle + \beta|1\rangle$ with $|\alpha|^2 + |\beta|^2 = 1$.</li>
+<li><b>Born rule:</b> measuring gives 0 with probability $|\alpha|^2$ and 1 with probability $|\beta|^2$.</li>
+<li>Gates are <b>unitary</b> matrices: $U^\dagger U = I$ (they preserve length, so probabilities still sum to 1). Observables are <b>Hermitian</b>: $A = A^\dagger$, with real eigenvalues.</li>
+<li>Pauli matrices: $X = \begin{bmatrix}0&1\\1&0\end{bmatrix}$, $Z = \begin{bmatrix}1&0\\0&-1\end{bmatrix}$; Hadamard $H = \frac{1}{\sqrt2}\begin{bmatrix}1&1\\1&-1\end{bmatrix}$.</li>
+<li>$n$ qubits live in the <b>tensor product</b> space of dimension $2^n$. A state that cannot be written as a tensor product is <b>entangled</b>, e.g. the Bell state $\frac{1}{\sqrt2}(|00\rangle + |11\rangle)$.</li>
+</ul>
+<div class="worked"><b>Worked example.</b> $H|0\rangle = \frac{1}{\sqrt2}(|0\rangle + |1\rangle)$: each outcome has probability $\tfrac12$. Applying $H$ again returns $|0\rangle$ exactly, because $H^2 = I$ — interference, not randomness.</div>
+<p class="lands"><b>Where it lands:</b> Mathematics for Quantum Computing (PE-2), Quantum Mechanics for QC (PE-3), Quantum Algorithms (PE-5), Quantum ML (PE-6).</p>`,
+      poll: { q: "Which tool would you use for quantum labs?", opts: ["Qiskit (IBM)", "Cirq (Google)", "A browser simulator (Quirk etc.)", "Pen and paper only"] }
+    },
+    {
+      id: "d12t3", title: "Big data mathematics: PageRank, MinHash, sketches",
+      video: { search: "NPTEL PageRank Markov chain mining massive datasets MinHash locality sensitive hashing" },
+      notes: N`
+<ul>
+<li><b>PageRank</b> is the stationary distribution of a random surfer: $r = \beta M r + \frac{1-\beta}{N}\mathbf{1}$ with damping $\beta \approx 0.85$. Power iteration converges because the teleport term makes the chain irreducible and aperiodic — an eigenvector problem (Day 5).</li>
+<li><b>Jaccard similarity</b> $J(A,B) = \frac{|A\cap B|}{|A \cup B|}$. Under a random permutation, $P(\mathrm{minhash}(A) = \mathrm{minhash}(B)) = J(A,B)$.</li>
+<li><b>LSH banding:</b> $b$ bands of $r$ rows; a pair with similarity $s$ becomes a candidate with probability $1 - (1 - s^r)^b$ — an S-curve you tune with $b$ and $r$.</li>
+<li><b>Count–min sketch:</b> width $\lceil e/\varepsilon \rceil$, depth $\lceil \ln(1/\delta)\rceil$ gives error $\le \varepsilon N$ with probability $1 - \delta$.</li>
+<li><b>Reservoir sampling:</b> keep the $i$-th item with probability $k/i$; every item ends up in the sample with probability $k/n$ (proof by induction, Day 1).</li>
+</ul>
+<div class="worked"><b>Worked example.</b> $b = 20, r = 5$, two documents with $s = 0.8$: $s^r = 0.328$, so $P = 1 - (0.672)^{20} \approx 0.9996$. At $s = 0.3$: $s^r = 0.00243$, $P \approx 0.047$. Similar pairs are almost always caught; dissimilar ones rarely.</div>
+<p class="lands"><b>Where it lands:</b> Big Data Analytics (PE-3), Data Mining (PE-2), Social Media Analytics (PE-5), search engines.</p>`,
+      poll: { q: "Which dataset would make a good Big Data lab for your students?", opts: ["Wikipedia link graph (PageRank)", "News articles (near-duplicates)", "Twitter / social data", "Kerala government open data"] }
+    },
+    {
+      id: "d12t4", title: "Quantitative models for projects and cloud systems",
+      video: { search: "NPTEL software project management PERT CPM critical path estimation" },
+      notes: N`
+<h4>Software Project Management</h4>
+<ul>
+<li><b>CPM:</b> forward pass for earliest start/finish, backward pass for latest; slack = LS − ES. Zero-slack activities form the critical path (the longest path in the task DAG, Day 4).</li>
+<li><b>PERT:</b> $t_e = \frac{o + 4m + p}{6}$, $\sigma = \frac{p - o}{6}$. Path variance is the sum of activity variances; use the normal distribution for completion probability (Day 6).</li>
+<li><b>Basic COCOMO</b> (organic): effort $= 2.4\,(\mathrm{KLOC})^{1.05}$ person-months.</li>
+<li><b>Earned value:</b> CPI = EV/AC, SPI = EV/PV; below 1 means over budget / behind schedule.</li>
+</ul>
+<h4>Cloud Computing</h4>
+<ul>
+<li><b>Availability</b> $= \frac{\mathrm{MTBF}}{\mathrm{MTBF} + \mathrm{MTTR}}$. In series: multiply availabilities. In parallel (redundant): $1 - \prod(1 - A_i)$.</li>
+<li>"Three nines" (99.9%) allows about 8.8 hours of downtime a year; "four nines" about 53 minutes.</li>
+<li><b>Quorum replication:</b> with $N$ replicas, read quorum $R$ and write quorum $W$, reads see the latest write if $R + W > N$.</li>
+</ul>
+<div class="worked"><b>Worked example.</b> PERT with $o = 2$, $m = 4$, $p = 12$ days: $t_e = (2 + 16 + 12)/6 = 5$ days, $\sigma \approx 1.67$.<br>
+Two replicas, each 99% available, in parallel: $1 - 0.01^2 = 99.99\%$.</div>
+<p class="lands"><b>Where it lands:</b> Software Project Management and Cloud Computing (PE-3), mini and major projects (S6–S8).</p>`,
+      poll: { q: "Should students apply PERT/CPM to their own mini-project plans?", opts: ["Yes, as a graded part", "Yes, optional", "No, too much overhead", "Only for major projects"] }
+    }
+  ],
+  quiz: [
+    { q: "The FFT computes an N-point DFT in:", o: [N`$O(N)$`, N`$O(N\log N)$`, N`$O(N^2)$`, N`$O(N^3)$`], a: 1, e: "T(N) = 2T(N/2) + O(N) gives O(N log N)." },
+    { q: "PERT estimate with optimistic 2, most likely 4 and pessimistic 12 days:", o: ["4 days", "5 days", "6 days", "6.5 days"], a: 1, e: "(2 + 4·4 + 12) / 6 = 30 / 6 = 5." },
+    { q: "Applying the Hadamard gate to |0⟩ gives:", o: ["|1⟩", "|0⟩", "(|0⟩ + |1⟩)/√2", "(|0⟩ − |1⟩)/√2"], a: 2, e: "H maps |0⟩ to the equal superposition with a plus sign." },
+    { q: "The probability that two sets have the same MinHash value equals their:", o: ["Cosine similarity", "Jaccard similarity", "Hamming distance", "Edit distance"], a: 1, e: "Under a random permutation, the first element of A ∪ B lies in A ∩ B with probability J(A, B)." },
+    { q: "Two redundant replicas, each 99% available, give a combined availability of:", o: ["98%", "99%", "99.9%", "99.99%"], a: 3, e: "1 − (1 − 0.99)² = 1 − 0.0001 = 0.9999." }
+  ]
+}
+  ]
+};
+
+</script>
+<script>
+/* =====================================================================
+   SETTINGS — change these before hosting
+   ===================================================================== */
+const CONFIG = {
+  SHEET_URL: "",        // Google Apps Script web-app URL (see apps-script/Code.gs). Empty = scores stay in this browser only.
+  ADMIN_PIN: "2026",    // PIN for the coordinator view
+  PASS_PERCENT: 60,     // pass mark for a day quiz
+  LOCK_QUIZ_UNTIL_POLLS_DONE: true  // the day quiz opens only after every topic poll that day is answered
+};
+
+/* ---------- storage ---------- */
+const KEY = "fmb:v1";
+const REC = "fmb:records";
+function readJSON(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } }
+function writeJSON(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+let S = readJSON(KEY, null) || { user:null, users:{}, overrides:{} };
+function U(){ // per-user progress bucket
+  if(!S.user) return { polls:{}, watched:{}, attempts:[] };
+  const id = S.user.emp;
+  S.users[id] = S.users[id] || { polls:{}, watched:{}, attempts:[] };
+  return S.users[id];
+}
+function save(){ writeJSON(KEY, S); }
+function allRecords(){ return readJSON(REC, []); }
+function addRecord(r){ const a = allRecords(); a.push(r); writeJSON(REC, a); }
+
+/* ---------- remote (Google Sheets) ---------- */
+function send(payload){
+  if(!CONFIG.SHEET_URL) return Promise.resolve(false);
+  return fetch(CONFIG.SHEET_URL, { method:"POST", mode:"no-cors", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body: JSON.stringify(payload) })
+    .then(() => true).catch(() => false);
+}
+function fetchTally(pollId){
+  if(!CONFIG.SHEET_URL) return Promise.resolve(null);
+  return fetch(CONFIG.SHEET_URL + "?action=tally&poll=" + encodeURIComponent(pollId))
+    .then(r => r.json()).then(j => j && Array.isArray(j.counts) ? j.counts : null).catch(() => null);
+}
+
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const DAYS = COURSE.days;
+const dayById = id => DAYS.find(d => d.id === id);
+function toast(msg){ const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 2600); }
+function math(el){
+  if(window.renderMathInElement){
+    try{ renderMathInElement(el, { delimiters:[{left:"$$",right:"$$",display:true},{left:"$",right:"$",display:false}], throwOnError:false }); }catch(e){}
+  } else { setTimeout(() => window.renderMathInElement && math(el), 400); }
+}
+function topicDone(t){ return U().polls[t.id] !== undefined; }
+function dayTopicsDone(d){ return d.topics.filter(topicDone).length; }
+function bestAttempt(d){
+  const a = U().attempts.filter(x => x.day === d.id);
+  return a.length ? a.reduce((m, x) => x.pct > m.pct ? x : m) : null;
+}
+function dayComplete(d){ const b = bestAttempt(d); return dayTopicsDone(d) === d.topics.length && b && b.pct >= CONFIG.PASS_PERCENT; }
+function ytId(input){
+  const s = String(input).trim();
+  const m = s.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([A-Za-z0-9_-]{11})/);
+  if(m) return m[1];
+  return /^[A-Za-z0-9_-]{11}$/.test(s) ? s : null;
+}
+
+/* ---------- chrome ---------- */
+function renderWho(){
+  const w = $("#who");
+  if(!S.user){ w.innerHTML = ""; return; }
+  const total = U().attempts.length ? DAYS.reduce((sum, d) => { const b = bestAttempt(d); return sum + (b ? b.score : 0); }, 0) : 0;
+  const max = DAYS.reduce((s, d) => s + d.quiz.length, 0);
+  w.innerHTML = `<span><strong>${esc(S.user.name)}</strong> · ${esc(S.user.emp)}</span>
+    <span class="mono" title="Sum of best quiz scores">${total}/${max}</span>
+    <button class="btn ghost small" id="switchUser">Switch user</button>`;
+  $("#switchUser").onclick = () => { S.user = null; save(); showLogin(); };
+}
+function renderRail(){
+  const cur = currentDay();
+  let html = "";
+  [1, 2].forEach(wk => {
+    html += `<h3 class="eyebrow">Week ${wk} · ${wk === 1 ? "Common basis" : "Course-specific"}</h3>`;
+    DAYS.filter(d => d.week === wk).forEach(d => {
+      const b = bestAttempt(d);
+      html += `<a class="daylink ${cur === d.id ? "active" : ""} ${dayComplete(d) ? "done" : ""}" href="#day-${d.id}">
+        <span class="num">${String(d.id).padStart(2, "0")}</span>
+        <span class="t">${esc(d.title)}<small>${esc(d.code)} · ${dayTopicsDone(d)}/${d.topics.length} topics</small></span>
+        <span class="score">${b ? b.score + "/" + b.total : ""}</span></a>`;
+    });
+  });
+  $("#railDays").innerHTML = html;
+}
+
+/* ---------- router ---------- */
+function currentDay(){ const m = location.hash.match(/^#day-(\d+)/); return m ? +m[1] : null; }
+function route(){
+  const h = location.hash || "#home";
+  renderWho(); renderRail();
+  let m;
+  if(h === "#admin") return viewAdmin();
+  if((m = h.match(/^#day-(\d+)-quiz$/))) return viewQuiz(dayById(+m[1]));
+  if((m = h.match(/^#day-(\d+)-t(\d+)$/))) return viewDay(dayById(+m[1]), +m[2] - 1);
+  if((m = h.match(/^#day-(\d+)$/))) return viewDay(dayById(+m[1]), firstOpenTopic(dayById(+m[1])));
+  return viewHome();
+}
+function firstOpenTopic(d){ if(!d) return 0; const i = d.topics.findIndex(t => !topicDone(t)); return i < 0 ? 0 : i; }
+function go(h){ if(location.hash === h) route(); else location.hash = h; window.scrollTo(0, 0); }
+
+/* ---------- home ---------- */
+function viewHome(){
+  const topicsAll = DAYS.reduce((s, d) => s + d.topics.length, 0);
+  const topicsDone = DAYS.reduce((s, d) => s + dayTopicsDone(d), 0);
+  const passed = DAYS.filter(d => { const b = bestAttempt(d); return b && b.pct >= CONFIG.PASS_PERCENT; }).length;
+  const next = DAYS.find(d => !dayComplete(d)) || DAYS[0];
+  let html = `<section class="hero">
+    <div><div class="eyebrow">${esc(COURSE.institution)}</div>
+      <h1>${esc(COURSE.title)}</h1>
+      <p>${esc(COURSE.subtitle)}. Each topic runs <b>watch → read → vote</b>; each day ends with a recorded quiz (pass mark ${CONFIG.PASS_PERCENT}%).</p>
+      <p style="margin-top:14px"><a class="btn primary" href="#day-${next.id}">${topicsDone ? "Continue" : "Start"} with Day ${next.id}: ${esc(next.title)}</a></p></div>
+    <div class="stats">
+      <div class="stat"><b>${topicsDone}/${topicsAll}</b><span>topics done</span></div>
+      <div class="stat"><b>${passed}/12</b><span>quizzes passed</span></div>
+      <div class="stat"><b>${U().attempts.length}</b><span>quiz attempts</span></div>
+    </div></section>`;
+  [1, 2].forEach(wk => {
+    html += `<section><div class="eyebrow" style="margin-bottom:10px">Week ${wk} · ${wk === 1 ? "The common mathematical basis (B1–B6)" : "Specialised mathematics per course"}</div><div class="weekgrid">`;
+    DAYS.filter(d => d.week === wk).forEach(d => {
+      const done = dayTopicsDone(d), b = bestAttempt(d);
+      html += `<a class="daycard" href="#day-${d.id}">
+        <span class="eyebrow">Day ${d.id} · ${esc(d.code)}</span>
+        <h3>${esc(d.title)}</h3>
+        <p>${esc(d.lands)}</p>
+        <div class="bar"><i style="width:${Math.round(done / d.topics.length * 100)}%"></i></div>
+        <div class="cardfoot"><span>${done}/${d.topics.length} topics</span><span class="best">${b ? "Best " + b.score + "/" + b.total : "Quiz not taken"}</span></div></a>`;
+    });
+    html += `</div></section>`;
+  });
+  $("#view").innerHTML = html;
+}
+
+/* ---------- day / topic ---------- */
+function stepsBar(d, activeIdx, quizActive){
+  let s = `<nav class="steps" aria-label="Topics">`;
+  d.topics.forEach((t, i) => {
+    s += `<a class="step ${topicDone(t) ? "done" : ""} ${!quizActive && i === activeIdx ? "active" : ""}" href="#day-${d.id}-t${i + 1}"><span class="dot"></span>${i + 1}. ${esc(t.title)}</a>`;
+  });
+  const b = bestAttempt(d);
+  s += `<a class="step quiz ${b ? "done" : ""} ${quizActive ? "active" : ""}" href="#day-${d.id}-quiz"><span class="dot"></span>Day ${d.id} quiz${b ? " · " + b.score + "/" + b.total : ""}</a></nav>`;
+  return s;
+}
+function dayHead(d){
+  return `<header class="dayhead"><div class="eyebrow">Week ${d.week} · Day ${d.id} · ${esc(d.code)}</div>
+    <h1>${esc(d.title)}</h1><div class="lands">Feeds: ${esc(d.lands)}</div></header>`;
+}
+function videoBlock(t){
+  const ov = S.overrides[t.id];
+  const id = ov || (t.video && t.video.yt);
+  const isAdmin = sessionStorage.getItem("fmb:admin") === "1";
+  const overrideUI = isAdmin ? `<div class="override" style="padding:0 16px 12px">
+      <label for="ov-${t.id}">Coordinator: pin a different YouTube video</label>
+      <input id="ov-${t.id}" placeholder="Paste a YouTube link" value="${ov ? "https://youtu.be/" + ov : ""}">
+      <button class="btn small" data-ov="${t.id}">Save</button>${ov ? `<button class="btn small ghost" data-ovclear="${t.id}">Reset</button>` : ""}</div>` : "";
+  if(id){
+    const src = ov ? "Pinned by coordinator" : t.video.src;
+    return `<div class="video"><iframe src="https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1" title="${esc(t.title)}" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
+      <div class="vmeta"><span class="src">${esc(src)}</span>
+        <a href="https://www.youtube.com/watch?v=${id}" target="_blank" rel="noopener">Open on YouTube ↗</a>
+        <button class="btn small" id="markWatched">${U().watched[t.id] ? "Watched ✓" : "Mark as watched"}</button></div>${overrideUI}`;
+  }
+  const q = encodeURIComponent(t.video.search);
+  return `<div class="vsearch"><p><b>No lecture is pinned for this topic yet.</b> Pick one from NPTEL or YouTube, watch it, then continue. Your coordinator can pin the chosen video here for everyone.</p>
+    <div class="row"><a class="btn primary" target="_blank" rel="noopener" href="https://www.youtube.com/results?search_query=${q}">Search YouTube ↗</a>
+    <a class="btn" target="_blank" rel="noopener" href="https://nptel.ac.in/courses">Browse NPTEL ↗</a>
+    <button class="btn" id="markWatched">${U().watched[t.id] ? "Watched ✓" : "Mark as watched"}</button></div></div>${overrideUI}`;
+}
+function viewDay(d, idx){
+  if(!d) return go("#home");
+  idx = Math.max(0, Math.min(idx || 0, d.topics.length - 1));
+  const t = d.topics[idx];
+  const vote = U().polls[t.id];
+  let html = dayHead(d) + stepsBar(d, idx, false) + `<article class="topic">
+    <div><div class="eyebrow">Topic ${idx + 1} of ${d.topics.length}</div><h2>${esc(t.title)}</h2></div>
+    <section class="phase"><header><span class="n">1</span><h3>Watch</h3><span class="right">${U().watched[t.id] ? "Watched" : "Lecture video"}</span></header>${videoBlock(t)}</section>
+    <section class="phase"><header><span class="n">2</span><h3>Read</h3><span class="right">Study material</span></header><div class="body"><div class="notes" id="notes">${t.notes}</div></div></section>
+    <section class="phase"><header><span class="n">3</span><h3>Vote</h3><span class="right">${vote !== undefined ? "Your vote is recorded" : "Poll"}</span></header>
+      <div class="body poll"><h4>${esc(t.poll.q)}</h4><div class="opts" id="opts"></div><div class="pollnote" id="pollnote"></div></div></section>
+    <div class="navrow">
+      ${idx > 0 ? `<a class="btn" href="#day-${d.id}-t${idx}">← ${esc(d.topics[idx - 1].title)}</a>` : `<span></span>`}
+      ${idx < d.topics.length - 1 ? `<a class="btn primary" href="#day-${d.id}-t${idx + 2}">Next: ${esc(d.topics[idx + 1].title)} →</a>` : `<a class="btn primary" href="#day-${d.id}-quiz">Go to the Day ${d.id} quiz →</a>`}
+    </div></article>`;
+  $("#view").innerHTML = html;
+  math($("#notes"));
+  const mw = $("#markWatched");
+  if(mw) mw.onclick = () => { U().watched[t.id] = Date.now(); save(); mw.textContent = "Watched ✓"; };
+  document.querySelectorAll("[data-ov]").forEach(b => b.onclick = () => {
+    const v = ytId($("#ov-" + b.dataset.ov).value);
+    if(!v){ toast("That doesn't look like a YouTube link."); return; }
+    S.overrides[b.dataset.ov] = v; save(); toast("Video pinned on this browser."); route();
+  });
+  document.querySelectorAll("[data-ovclear]").forEach(b => b.onclick = () => { delete S.overrides[b.dataset.ovclear]; save(); route(); });
+  renderPoll(t);
+}
+function localTally(t){
+  const counts = t.poll.opts.map(() => 0);
+  Object.values(S.users).forEach(u => { const v = u.polls[t.id]; if(v !== undefined && counts[v] !== undefined) counts[v]++; });
+  return counts;
+}
+function renderPoll(t, remote){
+  const vote = U().polls[t.id];
+  const counts = remote || localTally(t);
+  const total = counts.reduce((a, b) => a + b, 0);
+  $("#opts").innerHTML = t.poll.opts.map((o, i) => {
+    const pct = total ? Math.round(counts[i] / total * 100) : 0;
+    return `<button class="opt ${vote === i ? "mine" : ""}" data-i="${i}" type="button">
+      <span class="fill" style="width:${vote !== undefined ? pct : 0}%"></span>
+      <span>${esc(o)}</span>${vote !== undefined ? `<span class="pct">${pct}% · ${counts[i]}</span>` : ""}</button>`;
+  }).join("");
+  $("#pollnote").textContent = vote === undefined ? "Pick one option. You can change your vote later."
+    : remote ? `${total} votes from all faculty so far.` : CONFIG.SHEET_URL ? "Loading results from all faculty…" : `${total} vote${total === 1 ? "" : "s"} on this computer. Connect the Google Sheet to see everyone's votes.`;
+  document.querySelectorAll(".opt").forEach(b => b.onclick = () => {
+    const i = +b.dataset.i, prev = U().polls[t.id];
+    U().polls[t.id] = i; save();
+    send({ type:"poll", poll:t.id, topic:t.title, option:i, optionText:t.poll.opts[i], previous: prev === undefined ? "" : prev, name:S.user.name, emp:S.user.emp, dept:S.user.dept, time:new Date().toISOString() });
+    renderPoll(t); renderRail();
+    if(CONFIG.SHEET_URL) setTimeout(() => fetchTally(t.id).then(c => { if(c && location.hash.includes("-t") && document.getElementById("opts")) renderPoll(t, c); }), 1200);
+  });
+  if(vote !== undefined && CONFIG.SHEET_URL && !remote) fetchTally(t.id).then(c => { if(c && document.getElementById("opts")) renderPoll(t, c); });
+}
+
+/* ---------- quiz ---------- */
+function viewQuiz(d){
+  if(!d) return go("#home");
+  const missing = d.topics.filter(t => !topicDone(t));
+  const attempts = U().attempts.filter(a => a.day === d.id);
+  let html = dayHead(d) + stepsBar(d, -1, true);
+  if(CONFIG.LOCK_QUIZ_UNTIL_POLLS_DONE && missing.length){
+    html += `<div class="locked"><h3>The Day ${d.id} quiz opens once every topic is finished</h3>
+      <p class="attempts">Answer the poll at the end of these topics first:</p>
+      <ul>${missing.map(t => `<li><a href="#day-${d.id}-t${d.topics.indexOf(t) + 1}">${esc(t.title)}</a></li>`).join("")}</ul></div>`;
+    $("#view").innerHTML = html; return;
+  }
+  html += `<form id="quizForm" class="panel" novalidate>
+    <div class="row" style="justify-content:space-between"><h3>Day ${d.id} quiz · ${d.quiz.length} questions</h3>
+    <span class="attempts">${attempts.length ? `Attempt ${attempts.length + 1} · best so far ${bestAttempt(d).score}/${d.quiz.length}` : "First attempt"}</span></div>`;
+  d.quiz.forEach((q, qi) => {
+    html += `<div class="q" id="q${qi}"><div class="qn">Question ${qi + 1}</div><h4>${q.q}</h4>
+      ${q.o.map((o, oi) => `<label for="q${qi}o${oi}"><input type="radio" name="q${qi}" id="q${qi}o${oi}" value="${oi}"><span>${o}</span></label>`).join("")}
+      <div class="explain" hidden></div></div>`;
+  });
+  html += `<div class="err" id="quizErr"></div><div class="row"><button class="btn primary" type="submit">Submit answers</button></div></form><div id="quizResult"></div>`;
+  $("#view").innerHTML = html;
+  math($("#quizForm"));
+  $("#quizForm").onsubmit = e => {
+    e.preventDefault();
+    const answers = d.quiz.map((q, qi) => { const c = document.querySelector(`input[name="q${qi}"]:checked`); return c ? +c.value : null; });
+    const blank = answers.filter(a => a === null).length;
+    if(blank){ $("#quizErr").textContent = `Answer all questions before submitting (${blank} left).`; return; }
+    gradeQuiz(d, answers);
+  };
+}
+function gradeQuiz(d, answers){
+  const score = d.quiz.reduce((s, q, i) => s + (answers[i] === q.a ? 1 : 0), 0);
+  const total = d.quiz.length, pct = Math.round(score / total * 100);
+  const attemptNo = U().attempts.filter(a => a.day === d.id).length + 1;
+  const rec = { type:"quiz", day:d.id, dayTitle:d.title, score, total, pct, passed: pct >= CONFIG.PASS_PERCENT, attempt:attemptNo,
+    answers:answers.join(""), name:S.user.name, emp:S.user.emp, dept:S.user.dept, courses:S.user.courses || "", time:new Date().toISOString() };
+  U().attempts.push(rec); save(); addRecord(rec);
+  // show review
+  d.quiz.forEach((q, qi) => {
+    const box = $("#q" + qi);
+    box.querySelectorAll("input").forEach(i => i.disabled = true);
+    box.querySelectorAll("label").forEach((l, oi) => { if(oi === q.a) l.classList.add("right"); else if(oi === answers[qi]) l.classList.add("wrong"); });
+    const ex = box.querySelector(".explain"); ex.hidden = false;
+    ex.innerHTML = `${answers[qi] === q.a ? '<b class="ok">Correct.</b>' : '<b class="no">Not quite.</b>'} ${esc(q.e)}`;
+  });
+  $("#quizForm button[type=submit]").remove();
+  const resBox = $("#quizResult");
+  resBox.innerHTML = `<div class="result"><div class="ring" style="--p:${pct}"><span>${score}/${total}</span></div>
+    <div><span class="badge ${rec.passed ? "pass" : "fail"}">${rec.passed ? "Passed" : "Below pass mark"}</span>
+    <h3 style="margin:6px 0 4px">${pct}% on attempt ${attemptNo}</h3>
+    <p class="attempts" id="saveNote">Saved on this computer${CONFIG.SHEET_URL ? "; sending to the coordinator's sheet…" : "."}</p>
+    <div class="row" style="margin-top:8px"><a class="btn" href="#day-${d.id}-quiz" id="retake">Retake</a>
+    ${d.id < 12 ? `<a class="btn primary" href="#day-${d.id + 1}">Day ${d.id + 1}: ${esc(dayById(d.id + 1).title)} →</a>` : `<a class="btn primary" href="#home">Back to overview</a>`}</div></div></div>`;
+  $("#retake").onclick = e => { e.preventDefault(); viewQuiz(d); window.scrollTo(0, 0); };
+  send(rec).then(ok => { const n = $("#saveNote"); if(n && CONFIG.SHEET_URL) n.textContent = ok ? "Saved on this computer and sent to the coordinator's sheet." : "Saved on this computer. Could not reach the coordinator's sheet; ask the coordinator to collect the CSV."; });
+  renderRail(); renderWho();
+  resBox.scrollIntoView({ behavior:"smooth", block:"center" });
+}
+
+/* ---------- admin ---------- */
+function viewAdmin(){
+  if(sessionStorage.getItem("fmb:admin") !== "1"){
+    $("#view").innerHTML = `<form class="panel" id="pinForm" style="max-width:380px" novalidate><h3>Coordinator view</h3>
+      <p>Enter the coordinator PIN set in the file's settings.</p>
+      <div class="field"><label for="pin">PIN</label><input id="pin" type="password" inputmode="numeric" autocomplete="off"></div>
+      <div class="err" id="pinErr"></div><button class="btn primary" type="submit">Open</button></form>`;
+    $("#pinForm").onsubmit = e => { e.preventDefault();
+      if($("#pin").value === CONFIG.ADMIN_PIN){ sessionStorage.setItem("fmb:admin", "1"); viewAdmin(); }
+      else $("#pinErr").textContent = "That PIN is not correct."; };
+    return;
+  }
+  const recs = allRecords();
+  const people = {};
+  recs.forEach(r => { const p = people[r.emp] = people[r.emp] || { name:r.name, emp:r.emp, dept:r.dept, best:{} };
+    if(!p.best[r.day] || r.score > p.best[r.day].score) p.best[r.day] = r; });
+  const plist = Object.values(people);
+  let html = `<header class="dayhead"><div class="eyebrow">Coordinator view</div><h1>Scores and polls</h1></header>
+    <div class="panel"><h3>Score recording</h3>
+      <p class="status ${CONFIG.SHEET_URL ? "ok" : "off"}">${CONFIG.SHEET_URL ? "Connected to Google Sheets: every quiz attempt and poll vote is also sent to the sheet." : "Not connected to Google Sheets. Scores below are only those taken on this computer. Set SHEET_URL in the file to collect everyone's scores in one place."}</p>
+      <div class="row"><button class="btn primary" id="csvBest">Download best scores (CSV)</button><button class="btn" id="csvAll">Download all attempts (CSV)</button>
+      <button class="btn ghost" id="clearBtn">Clear records on this computer</button><button class="btn ghost" id="logout">Leave coordinator view</button></div>
+      <div class="err" id="clearMsg"></div></div>
+    <section><div class="eyebrow" style="margin-bottom:8px">Best score per faculty member and day · ${plist.length} people · ${recs.length} attempts</div>
+    <div class="tablewrap"><table class="data"><thead><tr><th>Name</th><th>Emp ID</th>${DAYS.map(d => `<th title="${esc(d.title)}">D${d.id}</th>`).join("")}<th>Total</th><th>Passed</th></tr></thead><tbody>`;
+  if(!plist.length) html += `<tr><td colspan="${DAYS.length + 4}" style="color:var(--muted)">No quiz attempts recorded on this computer yet. They appear here as soon as someone submits a day quiz.</td></tr>`;
+  plist.sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
+    let tot = 0, pass = 0;
+    html += `<tr><td>${esc(p.name)}</td><td class="mono">${esc(p.emp)}</td>` + DAYS.map(d => { const r = p.best[d.id]; if(!r) return `<td class="num">–</td>`; tot += r.score; if(r.passed) pass++; return `<td class="num">${r.score}</td>`; }).join("") + `<td class="num">${tot}</td><td class="num">${pass}/12</td></tr>`;
+  });
+  html += `</tbody></table></div></section>
+    <section><div class="eyebrow" style="margin-bottom:8px">Poll results on this computer</div><div class="tablewrap"><table class="data"><thead><tr><th>Day</th><th>Topic poll</th><th>Leading answer</th><th>Votes</th></tr></thead><tbody>`;
+  DAYS.forEach(d => d.topics.forEach(t => {
+    const c = localTally(t), tot = c.reduce((a, b) => a + b, 0), top = c.indexOf(Math.max(...c));
+    html += `<tr><td class="mono">D${d.id}</td><td>${esc(t.poll.q)}</td><td>${tot ? esc(t.poll.opts[top]) + " (" + Math.round(c[top] / tot * 100) + "%)" : "–"}</td><td class="num">${tot}</td></tr>`;
+  }));
+  html += `</tbody></table></div></section>
+    <div class="panel"><h3>Pinned videos</h3><p>Open any topic while in coordinator view to paste a different YouTube link. Pins are saved in this browser; to make one permanent for everyone, copy the list below into the <code>yt</code> field of that topic in the file.</p>
+    <pre class="mono" style="margin:0;white-space:pre-wrap;font-size:12.5px">${Object.keys(S.overrides).length ? esc(JSON.stringify(S.overrides, null, 2)) : "No videos pinned yet."}</pre></div>`;
+  $("#view").innerHTML = html;
+  $("#csvBest").onclick = () => downloadCSV("best-scores.csv", ["Name","Emp ID","Dept", ...DAYS.map(d => "Day " + d.id), "Total", "Days passed"],
+    plist.map(p => { let tot = 0, pass = 0; const cells = DAYS.map(d => { const r = p.best[d.id]; if(!r) return ""; tot += r.score; if(r.passed) pass++; return r.score; }); return [p.name, p.emp, p.dept, ...cells, tot, pass]; }));
+  $("#csvAll").onclick = () => downloadCSV("all-attempts.csv", ["Time","Name","Emp ID","Dept","Courses","Day","Day title","Attempt","Score","Total","Percent","Passed","Answers"],
+    recs.map(r => [r.time, r.name, r.emp, r.dept, r.courses, r.day, r.dayTitle, r.attempt, r.score, r.total, r.pct, r.passed ? "Yes" : "No", r.answers]));
+  $("#logout").onclick = () => { sessionStorage.removeItem("fmb:admin"); go("#home"); };
+  const cb = $("#clearBtn");
+  cb.onclick = () => {
+    if(cb.dataset.armed){ writeJSON(REC, []); S.users = {}; save(); viewAdmin(); toast("Records cleared on this computer."); return; }
+    cb.dataset.armed = "1"; cb.textContent = "Click again to clear all records"; $("#clearMsg").textContent = "This removes every score and vote stored on this computer. It cannot be undone.";
+  };
+}
+function downloadCSV(name, header, rows){
+  const q = v => { const s = String(v ?? ""); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const csv = [header, ...rows].map(r => r.map(q).join(",")).join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type:"text/csv" }));
+  a.download = name; document.body.appendChild(a); a.click(); a.remove();
+}
+
+/* ---------- login ---------- */
+function showLogin(){
+  $("#loginScrim").hidden = false; $("#fName").focus();
+}
+$("#loginForm").onsubmit = e => {
+  e.preventDefault();
+  const name = $("#fName").value.trim(), emp = $("#fEmp").value.trim();
+  if(!name || !emp){ $("#loginErr").textContent = "Enter your name and employee ID."; return; }
+  S.user = { name, emp, dept:$("#fDept").value.trim() || "CSE", courses:$("#fCourses").value.trim() };
+  save(); $("#loginScrim").hidden = true;
+  send({ type:"login", name, emp, dept:S.user.dept, courses:S.user.courses, time:new Date().toISOString() });
+  route();
+};
+
+/* ---------- boot ---------- */
+document.title = COURSE.title;
+$("#brandTitle").textContent = COURSE.title;
+window.addEventListener("hashchange", () => { route(); window.scrollTo(0, 0); });
+route();
+if(!S.user) showLogin();
+</script>
+</body>
+</html>
