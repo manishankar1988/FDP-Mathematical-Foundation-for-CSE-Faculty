@@ -32,10 +32,11 @@ const ADMIN_KEY = "change-this-key";
 const SHEET_ID = "";
 
 const COLS = {
-  Quizzes:   ["id", "title", "description", "open", "timeLimit", "showScore", "showReview", "oneAttempt", "shuffle", "passPercent", "opensAt", "closesAt"],
+  Quizzes:   ["id", "title", "description", "open", "timeLimit", "showScore", "showReview", "oneAttempt", "shuffle", "passPercent", "opensAt", "closesAt", "day", "speaker", "feedback"],
   Questions: ["quizId", "qid", "order", "question", "optA", "optB", "optC", "optD", "optE", "optF", "correct", "explanation", "marks"],
   Responses: ["time", "quizId", "quizTitle", "name", "emp", "dept", "score", "total", "percent", "passed",
               "timeTakenSec", "fullscreenExits", "tabSwitches", "answers"],
+  Feedback:  ["time", "quizId", "quizTitle", "day", "speaker", "name", "emp", "dept", "speakerRating", "relevanceRating", "comment"],
   Scores:    ["Time", "Name", "Emp ID", "Dept", "Courses", "Day", "Day title", "Attempt", "Score", "Total", "Percent", "Passed", "Answers"],
   Polls:     ["Time", "Name", "Emp ID", "Dept", "Poll ID", "Topic", "Option #", "Option text", "Previous option #"],
   Logins:    ["Time", "Name", "Emp ID", "Dept", "Courses"],
@@ -70,7 +71,10 @@ function rewrite_(name, objs) {
   const sh = sheet_(name), cols = COLS[name];
   sh.clearContents();
   const data = [cols].concat(objs.map(o => cols.map(c => o[c] === undefined || o[c] === null ? "" : o[c])));
-  sh.getRange(1, 1, data.length, cols.length).setValues(data);
+  const range = sh.getRange(1, 1, data.length, cols.length);
+  // Questions are stored as plain text. Otherwise Google Sheets turns an option such as "4, 5" or "1, 3" into a date.
+  if (name === "Questions") range.setNumberFormat("@");
+  range.setValues(data);
   sh.getRange(1, 1, 1, cols.length).setFontWeight("bold");
 }
 const bool_ = v => v === true || String(v).trim().toUpperCase() === "TRUE";
@@ -112,7 +116,7 @@ function doGet(e) {
       if (quiz.shuffle) questions = shuffle_(questions);
       return json_({ quiz: { id: quiz.id, title: quiz.title, description: quiz.description, timeLimit: quiz.timeLimit,
         passPercent: quiz.passPercent, count: questions.length,
-        opensAt: quiz.opensAt, closesAt: quiz.closesAt }, questions: questions, now: now });
+        opensAt: quiz.opensAt, closesAt: quiz.closesAt, day: quiz.day, speaker: quiz.speaker, feedback: quiz.feedback }, questions: questions, now: now });
     }
     // --- Course / Linear Algebra ---
     if (p.action === "content") {          // published items inside their visibility window
@@ -144,6 +148,7 @@ function doPost(e) {
   try {
     const action = String(d.action || "");
     if (action === "submit") return json_(submit_(d));                       // Quiz Hall answers
+    if (action === "feedback") return json_(feedback_(d));                   // Quiz Hall feedback form
     if (action.indexOf("adminContent") === 0) {                               // course / LA coordinator content
       const bad = adminCheck_(d); if (bad) return json_({ error: bad });
       return json_(adminContent_(d));
@@ -153,6 +158,7 @@ function doPost(e) {
       if (action === "adminLoad") return json_(adminLoad_());
       if (action === "adminSaveQuiz") return json_(adminSave_(d.quiz));
       if (action === "adminDeleteQuiz") return json_(adminDelete_(d.id));
+      if (action === "adminAllResponses") return json_({ quizzes: adminLoad_().quizzes, responses: rows_("Responses"), feedback: rows_("Feedback") });
       if (action === "adminResults") return json_({ rows: rows_("Responses").filter(r => String(r.quizId) === String(d.id)) });
       return json_({ error: "Unknown action." });
     }
@@ -182,7 +188,8 @@ function quizFromRow_(r) {
     open: bool_(r.open), timeLimit: num_(r.timeLimit, 0), showScore: bool_(r.showScore),
     showReview: bool_(r.showReview), oneAttempt: bool_(r.oneAttempt), shuffle: bool_(r.shuffle),
     passPercent: num_(r.passPercent, 60),
-    opensAt: num_(r.opensAt, 0), closesAt: num_(r.closesAt, 0)   // epoch milliseconds, 0 = not scheduled
+    opensAt: num_(r.opensAt, 0), closesAt: num_(r.closesAt, 0),   // epoch milliseconds, 0 = not scheduled
+    day: num_(r.day, 0), speaker: String(r.speaker || ""), feedback: bool_(r.feedback)   // FDP day number, speaker name, ask for feedback after the quiz
   };
 }
 /* Schedule: a published quiz is live between opensAt and closesAt (either may be empty). */
@@ -226,7 +233,7 @@ function submit_(d) {
   const now = Date.now();
   if (!quiz.open) return { error: "This quiz has been closed by the coordinator." };
   if (quiz.opensAt && now < quiz.opensAt) return { error: "This quiz has not opened yet." };
-  if (quiz.closesAt && now >= quiz.closesAt + GRACE_MS) return { error: "This quiz closed on " + fmt_(quiz.closesAt) + ", so new answers cannot be accepted." };
+  if (quiz.closesAt && now >= quiz.closesAt + GRACE_MS) return { error: "This quiz closed on " + fmt_(quiz.closesAt) + ", so new answers cannot be accepted.", closesAt: quiz.closesAt };
   if (!d.name || !d.emp) return { error: "Name and employee ID are required." };
   if (quiz.oneAttempt && attempted_(quiz.id, d.emp)) return { error: "You have already submitted this quiz." };
   const answers = d.answers || {};
@@ -247,6 +254,21 @@ function submit_(d) {
     passPercent: quiz.passPercent, review: quiz.showReview ? review : null };
 }
 
+/* feedback after a quiz: speaker and topic relevance, each rated 1 to 5 */
+function feedback_(d) {
+  const quiz = loadQuiz_(d.quizId);
+  if (!quiz) return { error: "This quiz no longer exists." };
+  if (!d.name || !d.emp) return { error: "Name and employee ID are required." };
+  const a = Math.round(Number(d.speakerRating)), b = Math.round(Number(d.relevanceRating));
+  if (!(a >= 1 && a <= 5) || !(b >= 1 && b <= 5)) return { error: "Please rate both questions from 1 to 5." };
+  const emp = String(d.emp).trim().toLowerCase();
+  const mine = rows_("Feedback").some(r => String(r.quizId) === quiz.id && String(r.emp).trim().toLowerCase() === emp);
+  if (mine) return { ok: true, already: true };            // one feedback form per person per quiz
+  sheet_("Feedback").appendRow([new Date(), quiz.id, quiz.title, quiz.day, quiz.speaker, String(d.name), String(d.emp), String(d.dept || ""),
+    a, b, String(d.comment || "").slice(0, 1000)]);
+  return { ok: true };
+}
+
 function adminLoad_() {
   const qs = rows_("Questions"), rs = rows_("Responses");
   return { quizzes: rows_("Quizzes").map(r => {
@@ -263,7 +285,8 @@ function adminSave_(quiz) {
   quizzes.push({ id: quiz.id, title: quiz.title, description: quiz.description || "", open: !!quiz.open,
     timeLimit: Number(quiz.timeLimit) || 0, showScore: !!quiz.showScore, showReview: !!quiz.showReview,
     oneAttempt: !!quiz.oneAttempt, shuffle: !!quiz.shuffle, passPercent: Number(quiz.passPercent) || 60,
-    opensAt: Number(quiz.opensAt) || 0, closesAt: Number(quiz.closesAt) || 0 });
+    opensAt: Number(quiz.opensAt) || 0, closesAt: Number(quiz.closesAt) || 0,
+    day: Math.max(0, Math.floor(Number(quiz.day) || 0)), speaker: String(quiz.speaker || "").slice(0, 120), feedback: !!quiz.feedback });
   rewrite_("Quizzes", quizzes);
   const keep = rows_("Questions").filter(r => String(r.quizId) !== quiz.id);
   (quiz.questions || []).forEach((q, i) => {

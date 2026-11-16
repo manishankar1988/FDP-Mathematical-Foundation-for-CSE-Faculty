@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@400;500&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
 <style>
 /* Layout: exam hall — a quiet lobby (pick quiz, enter details), a full-screen answer sheet (one question at a time,
@@ -178,6 +179,15 @@ pre.code{background:var(--sunken);border-radius:8px;padding:10px;font:12.5px/1.5
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .grid3{grid-template-columns:1fr 1fr}
 }
+.fbq{margin:14px 0}.fbq b{display:block;margin-bottom:8px;font-weight:600}
+.scale{display:flex;gap:8px;flex-wrap:wrap}
+.scale label{display:flex;flex-direction:column;align-items:center;gap:4px;border:1px solid var(--line);border-radius:10px;padding:8px 14px;min-width:64px;cursor:pointer;background:var(--surface);font-size:12.5px;color:var(--muted)}
+.scale label:hover{border-color:var(--accent)}
+.scale input{position:absolute;opacity:0;pointer-events:none}
+.scale label:has(input:checked){border-color:var(--accent);background:var(--accent-soft);color:var(--ink);font-weight:600}
+.scale label:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+.scale .n{font:600 18px var(--mono);color:var(--ink)}
+.scalehint{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);max-width:420px;margin-top:4px}
 @media (max-width:520px){ .grid2,.grid3{grid-template-columns:1fr} .result{grid-template-columns:1fr} }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -240,10 +250,35 @@ function quizState(q, t){
 }
 const STATE_LABEL = { live:"Live", scheduled:"Scheduled", ended:"Ended", closed:"Closed" };
 const STATE_BADGE = { live:"on", scheduled:"sched", ended:"off", closed:"off" };
+/* the server words its errors in the Apps Script time zone (often UTC); rebuild any time in them in the viewer's own zone */
+function errText(r){
+  const e = String(r.error || "");
+  if(r.opensAt && /opens on/i.test(e)) return "This quiz opens on " + fmtWhen(r.opensAt) + ".";
+  if(r.closesAt && /closed on/i.test(e)) return "This quiz closed on " + fmtWhen(r.closesAt) + (/cannot be accepted/i.test(e) ? ", so new answers cannot be accepted." : ".");
+  return e;
+}
 function fmtWhen(ms){ return new Date(ms).toLocaleString([], { day:"numeric", month:"short", year:"numeric", hour:"numeric", minute:"2-digit" }); }
 function toLocalInput(ms){ if(!ms) return ""; const d = new Date(ms), p = n => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; }
 function fromLocalInput(v){ if(!v) return 0; const t = new Date(v).getTime(); return isNaN(t) ? 0 : t; }
 function quizLink(id){ return location.origin + location.pathname + "#quiz-" + id; }
+
+/* Excel download: each sheet is { name, header:[...], rows:[[...]] }. Falls back to CSV if the Excel library did not load. */
+function downloadXlsx(base, sheets){
+  const a = document.createElement("a");
+  if(window.XLSX){
+    const wb = XLSX.utils.book_new();
+    sheets.forEach(sh => {
+      const ws = XLSX.utils.aoa_to_sheet([sh.header].concat(sh.rows));
+      ws["!cols"] = sh.header.map((h, i) => ({ wch: Math.min(60, Math.max(String(h).length + 2, ...sh.rows.slice(0, 40).map(r => String(r[i] ?? "").length + 1), 8)) }));
+      XLSX.utils.book_append_sheet(wb, ws, String(sh.name).replace(/[\\\/?*\[\]:]/g, " ").slice(0, 31));
+    });
+    XLSX.writeFile(wb, base + ".xlsx"); return;
+  }
+  const q = v => { const s = String(v ?? ""); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const sh = sheets[0], csv = [sh.header].concat(sh.rows).map(r => r.map(q).join(",")).join("\r\n");
+  a.href = URL.createObjectURL(new Blob(["\ufeff" + csv], { type:"text/csv" })); a.download = base + ".csv"; document.body.appendChild(a); a.click(); a.remove();
+  toast("The Excel library could not load, so a CSV file was downloaded (it also opens in Excel).");
+}
 
 /* =====================================================================
    DATA LAYER — remote (Google Sheet) or demo (this browser)
@@ -263,7 +298,9 @@ const remote = {
   adminLoad(key){ return this.post({ action:"adminLoad", key }); },
   adminSave(key, quiz){ return this.post({ action:"adminSaveQuiz", key, quiz }); },
   adminDelete(key, id){ return this.post({ action:"adminDeleteQuiz", key, id }); },
-  adminResults(key, id){ return this.post({ action:"adminResults", key, id }); }
+  adminResults(key, id){ return this.post({ action:"adminResults", key, id }); },
+  feedback(p){ return this.post(Object.assign({ action:"feedback" }, p)); },
+  adminAll(key){ return this.post({ action:"adminAllResponses", key }); }
 };
 
 const local = {
@@ -281,7 +318,7 @@ const local = {
     if(q.oneAttempt && emp && this.responses().some(r => r.quizId === id && r.emp.toLowerCase() === String(emp).toLowerCase())) return { error:"You have already submitted this quiz. Only one attempt is allowed." };
     let qs = q.questions.map(x => ({ qid:x.qid, text:x.text, options:x.options }));
     if(q.shuffle) qs = shuffle(qs);
-    return { quiz:{ id:q.id, title:q.title, description:q.description, timeLimit:q.timeLimit, passPercent:q.passPercent, count:qs.length, opensAt:q.opensAt || 0, closesAt:q.closesAt || 0 }, questions:qs, now: Date.now() };
+    return { quiz:{ id:q.id, title:q.title, description:q.description, timeLimit:q.timeLimit, passPercent:q.passPercent, count:qs.length, opensAt:q.opensAt || 0, closesAt:q.closesAt || 0, day:q.day || 0, speaker:q.speaker || "", feedback:!!q.feedback }, questions:qs, now: Date.now() };
   },
   async submit(p){
     const q = this.quizzes().find(x => x.id === p.quizId);
@@ -319,6 +356,20 @@ const local = {
   async adminResults(key, id){
     if(key !== CONFIG.DEMO_PIN) return { error:"That PIN is not correct." };
     return { rows: this.responses().filter(r => r.quizId === id) };
+  },
+  async feedback(p){
+    const q = this.quizzes().find(x => x.id === p.quizId); if(!q) return { error:"This quiz no longer exists." };
+    const a = Math.round(Number(p.speakerRating)), b = Math.round(Number(p.relevanceRating));
+    if(!(a >= 1 && a <= 5) || !(b >= 1 && b <= 5)) return { error:"Please rate both questions from 1 to 5." };
+    const fb = readJSON("fq:feedback", []);
+    if(fb.some(x => x.quizId === q.id && String(x.emp).toLowerCase() === String(p.emp).toLowerCase())) return { ok:true, already:true };
+    fb.push({ time:new Date().toISOString(), quizId:q.id, quizTitle:q.title, day:q.day || 0, speaker:q.speaker || "", name:p.name, emp:p.emp, dept:p.dept, speakerRating:a, relevanceRating:b, comment:p.comment || "" });
+    writeJSON("fq:feedback", fb); return { ok:true };
+  },
+  async adminAll(key){
+    if(key !== CONFIG.DEMO_PIN) return { error:"That PIN is not correct." };
+    const rs = this.responses();
+    return { quizzes: this.quizzes(), responses: rs, feedback: readJSON("fq:feedback", []) };
   }
 };
 const API = DEMO ? local : remote;
@@ -366,6 +417,7 @@ function route(){
   if(h === "#admin") return viewAdmin();
   if((m = h.match(/^#edit-(.+)$/))) return viewEditor(decodeURIComponent(m[1]));
   if(h === "#new") return viewEditor(null);
+  if(h === "#reports") return viewReports();
   if((m = h.match(/^#results-(.+)$/))) return viewResults(decodeURIComponent(m[1]));
   if((m = h.match(/^#quiz-(.+)$/))) return viewStart(decodeURIComponent(m[1]));
   return viewHome();
@@ -427,7 +479,7 @@ function viewStart(id){
     </form></div>`;
   // preview (no answers) to show title and size
   call(() => API.getQuiz(id, "")).then(r => {
-    if(r.error){ $("#sTitle").textContent = "Quiz unavailable"; $("#sErr").textContent = r.error; return; }
+    if(r.error){ $("#sTitle").textContent = "Quiz unavailable"; $("#sErr").textContent = errText(r); return; }
     $("#sTitle").innerHTML = rich(r.quiz.title); $("#sDesc").innerHTML = rich(r.quiz.description || "");
     syncClock(r.now);
     $("#sMeta").innerHTML = `<span>${r.quiz.count} questions</span><span>${r.quiz.timeLimit ? r.quiz.timeLimit + " minutes" : "No time limit"}</span><span>Pass mark ${r.quiz.passPercent}%</span>${r.quiz.closesAt ? `<span>Closes ${esc(fmtWhen(r.quiz.closesAt))}</span>` : ""}`;
@@ -444,7 +496,7 @@ function viewStart(id){
     const fsReq = enterFullscreen();
     $("#startBtn").disabled = true; $("#sErr").textContent = "";
     const r = await call(() => API.getQuiz(id, emp));
-    if(r.error){ exitFullscreen(); $("#sErr").textContent = r.error; $("#startBtn").disabled = false; return; }
+    if(r.error){ exitFullscreen(); $("#sErr").textContent = errText(r); $("#startBtn").disabled = false; return; }
     if(!r.questions.length){ exitFullscreen(); $("#sErr").textContent = "This quiz has no questions yet."; $("#startBtn").disabled = false; return; }
     await fsReq;
     syncClock(r.now);
@@ -579,7 +631,7 @@ async function doSubmit(auto){
   const r = await call(() => API.submit(payload));
   if(r.error){
     RUN.submitting = false;
-    f.innerHTML = `<span class="err" style="flex:1">${esc(r.error)} Your answers are saved on this device.</span><button class="btn primary" id="retryBtn" type="button">Try again</button>`;
+    f.innerHTML = `<span class="err" style="flex:1">${esc(errText(r))} Your answers are saved on this device.</span><button class="btn primary" id="retryBtn" type="button">Try again</button>`;
     $("#retryBtn").onclick = () => doSubmit(auto);
     return;
   }
@@ -610,8 +662,36 @@ function showResult(r, auto){
         ${q.explanation ? `<div class="muted" style="font-size:13.5px">${rich(q.explanation)}</div>` : ""}</div>`).join("") + `</div>`;
     }
   }
+  if(RUN.quiz && RUN.quiz.feedback) html += feedbackPanel();
   html += `</div>`;
   $("#view").innerHTML = html; math($("#view")); window.scrollTo(0, 0);
+  if(RUN.quiz && RUN.quiz.feedback) bindFeedback();
+}
+const SCALE_WORDS = ["Poor", "Fair", "Good", "Very good", "Excellent"];
+function scaleHtml(name){
+  return `<div class="scale" role="radiogroup">${[1, 2, 3, 4, 5].map(n => `<label><input type="radio" name="${name}" value="${n}"><span class="n">${n}</span><span>${SCALE_WORDS[n - 1]}</span></label>`).join("")}</div>`;
+}
+function feedbackPanel(){
+  const sp = RUN.quiz.speaker;
+  return `<form class="panel" id="fbForm" novalidate><h2>Quick feedback on this session</h2>
+    <p class="muted">Takes 20 seconds. Rate from 1 (poor) to 5 (excellent).</p>
+    <div class="fbq"><b>${sp ? "How would you rate the speaker, " + esc(sp) + "?" : "How would you rate the speaker?"}</b>${scaleHtml("fbSpeaker")}</div>
+    <div class="fbq"><b>How relevant was the topic to your teaching or work?</b>${scaleHtml("fbRel")}</div>
+    <div class="field"><label for="fbComment">Any comment? (optional)</label><textarea id="fbComment" rows="3" maxlength="800"></textarea></div>
+    <div class="err" id="fbErr"></div><div class="row"><button class="btn primary" type="submit" id="fbSend">Send feedback</button></div></form>`;
+}
+function bindFeedback(){
+  const f = $("#fbForm"); if(!f) return;
+  f.onsubmit = async e => {
+    e.preventDefault();
+    const a = f.querySelector('input[name="fbSpeaker"]:checked'), b = f.querySelector('input[name="fbRel"]:checked');
+    if(!a || !b){ $("#fbErr").textContent = "Please give both ratings from 1 to 5."; return; }
+    $("#fbSend").disabled = true; $("#fbErr").textContent = "";
+    const r = await call(() => API.feedback({ quizId:RUN.quiz.id, name:RUN.who.name, emp:RUN.who.emp, dept:RUN.who.dept,
+      speakerRating:+a.value, relevanceRating:+b.value, comment:$("#fbComment").value.trim() }));
+    if(r.error){ $("#fbSend").disabled = false; $("#fbErr").textContent = r.error; return; }
+    f.innerHTML = `<h2>Thank you for your feedback</h2><p class="muted">It has been sent to the coordinator.</p>`;
+  };
 }
 
 /* =====================================================================
@@ -644,13 +724,13 @@ async function viewAdmin(){
   $("#view").innerHTML = `<div class="panel"><p class="muted">Loading…</p></div>`;
   const qs = await loadAdmin(true); if(!qs) return;
   let html = `<section class="row" style="justify-content:space-between"><div><div class="eyebrow">Coordinator</div><h1 style="font-size:26px">Quizzes</h1></div>
-    <div class="row"><a class="btn primary" href="#new">+ New quiz</a><button class="btn ghost" id="signOut">Sign out</button></div></section>${demoBanner()}
+    <div class="row"><a class="btn primary" href="#new">+ New quiz</a><a class="btn" href="#reports">Reports and downloads</a><button class="btn ghost" id="signOut">Sign out</button></div></section>${demoBanner()}
     <div class="tablewrap"><table class="data"><thead><tr><th>Quiz</th><th>Status</th><th>Schedule</th><th>Questions</th><th>Time</th><th>Submissions</th><th></th></tr></thead><tbody>`;
   if(!qs.length) html += `<tr><td colspan="7" class="wrap muted">No quizzes yet. Click “New quiz” to create the first one.</td></tr>`;
   qs.forEach(q => {
     const st = quizState(q);
     const sched = q.opensAt || q.closesAt ? `${q.opensAt ? "Opens " + esc(fmtWhen(q.opensAt)) : "Opens on publish"}<br>${q.closesAt ? "Closes " + esc(fmtWhen(q.closesAt)) : "Closes manually"}` : `<span class="muted">Manual</span>`;
-    html += `<tr><td class="wrap"><b>${rich(q.title)}</b><div class="mono muted" style="font-size:12px">${esc(q.id)}</div></td>
+    html += `<tr><td class="wrap"><b>${rich(q.title)}</b><div class="mono muted" style="font-size:12px">${esc(q.id)}${q.day ? " · Day " + esc(q.day) : ""}${q.speaker ? " · " + esc(q.speaker) : ""}</div></td>
       <td><span class="badge ${STATE_BADGE[st]}">${STATE_LABEL[st]}</span></td>
       <td class="wrap when">${sched}</td>
       <td class="num">${q.questions.length}</td><td class="num">${q.timeLimit ? q.timeLimit + " min" : "–"}</td><td class="num">${q.responses || 0}</td>
@@ -694,7 +774,7 @@ let ED = null;
 async function viewEditor(id){
   const qs = await loadAdmin(false); if(!qs) return;
   if(id){ const q = qs.find(x => x.id === id); if(!q){ toast("Quiz not found."); location.hash = "#admin"; return; } ED = JSON.parse(JSON.stringify(q)); delete ED.responses; ED.isNew = false; }
-  else ED = { id:"", title:"", description:"", open:false, timeLimit:15, showScore:true, showReview:true, oneAttempt:true, shuffle:false, passPercent:60, opensAt:0, closesAt:0,
+  else ED = { id:"", title:"", description:"", open:false, timeLimit:15, showScore:true, showReview:true, oneAttempt:true, shuffle:false, passPercent:60, opensAt:0, closesAt:0, day:0, speaker:"", feedback:true,
     questions:[{ qid:"q1", text:"", options:["", "", "", ""], correct:-1, explanation:"", marks:1 }], isNew:true };
   renderEditor();
 }
@@ -718,6 +798,13 @@ function renderEditor(){
         <label class="check"><input type="checkbox" id="eReview" ${e.showReview ? "checked" : ""}><span><b>Show correct answers after submitting</b><br><span class="muted">Needs “Show score”.</span></span></label>
         <label class="check"><input type="checkbox" id="eShuffle" ${e.shuffle ? "checked" : ""}><span><b>Shuffle question order</b></span></label>
       </div></div>
+    <div class="panel"><h2>FDP session</h2>
+      <p class="hint">Give each quiz its FDP day number so scores can be downloaded day by day, with the running total up to that day.</p>
+      <div class="grid3">
+        <div class="field"><label for="eDay">FDP day number</label><input type="number" id="eDay" min="0" step="1" value="${e.day || ""}" placeholder="e.g. 1"><small>Leave empty if not part of a day</small></div>
+        <div class="field"><label for="eSpeaker">Speaker</label><input type="text" id="eSpeaker" maxlength="120" value="${esc(e.speaker || "")}" placeholder="e.g. Dr. Krishnadas J"></div>
+        <label class="check"><input type="checkbox" id="eFeedback" ${e.feedback ? "checked" : ""}><span><b>Ask for feedback after the quiz</b><br><span class="muted">Speaker and topic relevance, rated 1 to 5.</span></span></label>
+      </div></div>
     <div class="panel"><h2>Schedule (optional)</h2>
       <p class="hint">Times are in this computer's time zone. A published quiz goes live at the opening time and stops accepting answers at the closing time; anyone still answering is submitted automatically at that moment. Leave a box empty to open as soon as it is published, or to close only when you press “Close now”.</p>
       <div class="grid2">
@@ -731,7 +818,12 @@ function renderEditor(){
       <div id="impBox" hidden class="qedit"><b>Paste rows from Excel or Google Sheets</b>
         <p class="hint">Columns in this order: Question · Option A · Option B · Option C · Option D · Correct (A–D) · Explanation (optional). Tab-separated (copied cells) or comma-separated with quotes both work. A header row is skipped automatically.</p>
         <textarea id="impText" rows="6" placeholder="What is 2 + 2?&#9;3&#9;4&#9;5&#9;6&#9;B&#9;Basic addition"></textarea>
-        <div class="row"><button class="btn primary small" id="impGo">Add these questions</button><span class="err" id="impErr"></span></div></div>
+        <div class="row"><button class="btn primary small" id="impGo">Add these questions</button><span class="err" id="impErr"></span></div>
+        <hr style="border:0;border-top:1px solid var(--line);margin:12px 0">
+        <b>Or use an Excel file</b>
+        <p class="hint">Download the template, type your questions into it (one per row), save, then upload it here. Excel (.xlsx, .xls) and CSV files work. Tip: format the option columns as Text so entries like “4, 5” are not turned into dates.</p>
+        <div class="row"><button class="btn small" type="button" id="impTpl">Download Excel template</button>
+          <label class="btn small primary" for="impFile" style="cursor:pointer">Upload filled Excel file</label><input type="file" id="impFile" accept=".xlsx,.xls,.csv" hidden></div></div>
       <div id="qList" style="display:flex;flex-direction:column;gap:12px"></div>
       <button class="btn" id="addQ2" style="align-self:flex-start">+ Add question</button></div>
     <div class="row" style="justify-content:space-between"><div class="row"><button class="btn primary" id="saveBot">Save quiz</button><a class="btn" href="#admin">Cancel</a></div>
@@ -743,30 +835,51 @@ function renderEditor(){
     e.timeLimit = Math.max(0, parseInt($("#eTime").value, 10) || 0); e.passPercent = Math.min(100, Math.max(0, parseInt($("#ePass").value, 10) || 0));
     e.open = $("#eOpen").checked; e.oneAttempt = $("#eOne").checked; e.showScore = $("#eScore").checked; e.showReview = $("#eReview").checked; e.shuffle = $("#eShuffle").checked;
     e.opensAt = fromLocalInput($("#eOpens").value); e.closesAt = fromLocalInput($("#eCloses").value);
+    e.day = Math.max(0, parseInt($("#eDay").value, 10) || 0); e.speaker = $("#eSpeaker").value.trim(); e.feedback = $("#eFeedback").checked;
     const st = quizState(e);
     $("#schedNote").textContent = !e.open ? "Not published: participants cannot see this quiz."
       : st === "scheduled" ? "Will go live on " + fmtWhen(e.opensAt) + (e.closesAt ? " and close on " + fmtWhen(e.closesAt) + "." : ".")
       : st === "ended" ? "The closing time has already passed, so this quiz would not be available."
       : e.closesAt ? "Live now. Closes on " + fmtWhen(e.closesAt) + "." : "Live now. Stays open until you close it.";
   };
-  ["eTitle","eDesc","eTime","ePass","eOpen","eOne","eScore","eReview","eShuffle","eOpens","eCloses"].forEach(id => $("#" + id).addEventListener("input", sync));
+  ["eTitle","eDesc","eTime","ePass","eOpen","eOne","eScore","eReview","eShuffle","eOpens","eCloses","eDay","eSpeaker","eFeedback"].forEach(id => $("#" + id).addEventListener("input", sync));
   document.querySelectorAll("[data-clr]").forEach(b => b.onclick = () => { $("#" + b.dataset.clr).value = ""; sync(); });
   sync();
   const add = () => { e.questions.push({ qid:"", text:"", options:["", "", "", ""], correct:-1, explanation:"", marks:1 }); renderQList(); $("#qList").lastElementChild.querySelector("textarea").focus(); };
   $("#addQ").onclick = add; $("#addQ2").onclick = add;
   $("#impToggle").onclick = () => { $("#impBox").hidden = !$("#impBox").hidden; };
-  $("#impGo").onclick = () => {
-    const rows = parseTable($("#impText").value); let added = 0, bad = [];
+  const importRows = rows => {
+    let added = 0, bad = [];
     rows.forEach((r, i) => {
       if(i === 0 && /question/i.test(r[0] || "") && /option|^a$/i.test(r[1] || "")) return;
-      const opts = r.slice(1, 5).map(s => (s || "").trim()).filter(Boolean), c = LET.indexOf(String(r[5] || "").trim().toUpperCase());
-      if(!(r[0] || "").trim() || opts.length < 2 || c < 0 || c >= opts.length){ bad.push(i + 1); return; }
-      e.questions.push({ qid:"", text:r[0].trim(), options:opts, correct:c, explanation:(r[6] || "").trim(), marks:1 }); added++;
+      const opts = r.slice(1, 5).map(x => String(x ?? "").trim()).filter(Boolean), letter = String(r[5] ?? "").trim().toUpperCase(), c = /^[A-F]$/.test(letter) ? LET.indexOf(letter) : -1;
+      if(!String(r[0] ?? "").trim() || opts.length < 2 || c < 0 || c >= opts.length){ bad.push(i + 1); return; }
+      e.questions.push({ qid:"", text:String(r[0]).trim(), options:opts, correct:c, explanation:String(r[6] ?? "").trim(), marks:1 }); added++;
     });
     e.questions = e.questions.filter(q => q.text.trim() || q.options.some(o => o.trim()));
     renderQList();
-    $("#impErr").textContent = bad.length ? `Skipped row${bad.length > 1 ? "s" : ""} ${bad.join(", ")}: each row needs a question, at least two options and a correct letter.` : "";
+    $("#impErr").textContent = bad.length ? `Skipped row${bad.length > 1 ? "s" : ""} ${bad.join(", ")}: each row needs a question, at least two options and a correct letter (A–D).` : "";
     if(added){ toast(`${added} question${added > 1 ? "s" : ""} added.`); if(!bad.length){ $("#impText").value = ""; $("#impBox").hidden = true; } }
+    return added;
+  };
+  $("#impGo").onclick = () => importRows(parseTable($("#impText").value));
+  $("#impTpl").onclick = () => downloadXlsx("quiz-import-template", [
+    { name:"Questions", header:["Question", "Option A", "Option B", "Option C", "Option D", "Correct (A-D)", "Explanation (optional)"],
+      rows:[["What is 2 + 2?", "3", "4", "5", "6", "B", "Basic addition."],
+            ["Find the L1 norm of v = [-2, 3, -4].", "5", "7", "9", "12", "C", "|-2| + |3| + |-4| = 9."],
+            ["Eigenvalues of A = [[4, 0], [0, 5]]", "4, 5", "0, 5", "4, 4", "9, 1", "A", "A diagonal matrix has its diagonal entries as eigenvalues."]] },
+    { name:"How to use", header:["Instructions"], rows:[["Keep the first sheet named Questions and delete the three example rows."], ["One question per row. Columns: Question, Option A to D, Correct letter (A, B, C or D), Explanation."],
+      ["Each question needs at least two options. Leave unused option cells empty."], ["Format the option columns as Text so entries like 4, 5 are not changed into dates."],
+      ["Write maths between dollar signs if you want it typeset, e.g. $A^{-1}$."], ["Save the file, then use Upload filled Excel file in the quiz editor."]] }]);
+  $("#impFile").onchange = async ev => {
+    const file = ev.target.files[0]; ev.target.value = ""; if(!file) return;
+    if(!window.XLSX){ $("#impErr").textContent = "The Excel reader has not loaded. Check your internet connection and try again, or paste the rows instead."; return; }
+    try{
+      const wb = XLSX.read(await file.arrayBuffer(), { type:"array" });
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header:1, raw:false, defval:"" }).filter(r => r.some(c => String(c).trim()));
+      if(!rows.length){ $("#impErr").textContent = "That file has no rows."; return; }
+      if(!importRows(rows) && !$("#impErr").textContent) $("#impErr").textContent = "No questions were found in that file.";
+    }catch(err){ $("#impErr").textContent = "Could not read that file. Save it as .xlsx or .csv and try again."; }
   };
   const save = async () => {
     sync();
@@ -849,6 +962,72 @@ function parseTable(text){
   return rows;
 }
 
+/* ---------- reports: day-wise scores, aggregate up to a day, feedback ---------- */
+async function viewReports(){
+  const qs = await loadAdmin(false); if(!qs) return;
+  $("#view").innerHTML = `<div class="panel"><p class="muted">Loading…</p></div>`;
+  const r = await call(() => API.adminAll(ADMIN.key));
+  if(r.error){ $("#view").innerHTML = `<div class="panel"><p class="err">${esc(r.error)}</p><a class="btn" href="#admin">Back</a></div>`; return; }
+  const quizzes = r.quizzes || qs, resp = r.responses || [], fbAll = r.feedback || [];
+  const marks = q => (q.questions || []).reduce((s, x) => s + (Number(x.marks) || 1), 0);
+  const dayOf = {}, dayMax = {}, titleOf = {};
+  quizzes.forEach(q => { const d = Number(q.day) || 0; dayOf[String(q.id)] = d; titleOf[String(q.id)] = q.title; if(d) dayMax[d] = (dayMax[d] || 0) + marks(q); });
+  const days = Object.keys(dayMax).map(Number).sort((a, b) => a - b);
+  const head = `<section class="row" style="justify-content:space-between"><div><div class="eyebrow"><a href="#admin">Coordinator</a> / Reports</div><h1 style="font-size:24px">Reports and downloads</h1></div><a class="btn" href="#admin">Back to quizzes</a></section>`;
+  if(!days.length){
+    $("#view").innerHTML = head + `<div class="panel"><h2>No days set yet</h2><p class="muted">Open a quiz with <b>Edit</b> and enter its <b>FDP day number</b> under “FDP session”. Then this page can give day-wise scores and the running total up to each day.</p></div>`; return;
+  }
+  // best score per person per quiz; people keyed by employee ID
+  const people = {};
+  resp.forEach(x => {
+    const day = dayOf[String(x.quizId)]; if(!day) return;
+    const key = String(x.emp).trim().toLowerCase();
+    const p = people[key] = people[key] || { name:x.name, emp:String(x.emp), dept:x.dept || "", best:{} };
+    const sc = Number(x.score) || 0, k = String(x.quizId);
+    if(!p.best[k] || sc > p.best[k].score) p.best[k] = { score:sc, day };
+  });
+  const plist = Object.values(people).sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  const took = (p, d) => Object.values(p.best).some(b => b.day === d);
+  const dayScore = (p, d) => Object.values(p.best).filter(b => b.day === d).reduce((s, b) => s + b.score, 0);
+  const upTo = n => days.filter(d => d <= n);
+  const aggScore = (p, n) => upTo(n).reduce((s, d) => s + dayScore(p, d), 0);
+  const aggMax = n => upTo(n).reduce((s, d) => s + (dayMax[d] || 0), 0);
+  const pct = (a, b) => b ? Math.round(a / b * 1000) / 10 : 0;
+  const dayRows = n => plist.filter(p => upTo(n).some(d => took(p, d))).map(p => [p.name, p.emp, p.dept,
+    took(p, n) ? dayScore(p, n) : "Absent", dayMax[n] || 0, took(p, n) ? pct(dayScore(p, n), dayMax[n] || 0) : "Absent",
+    aggScore(p, n), aggMax(n), pct(aggScore(p, n), aggMax(n)), upTo(n).filter(d => took(p, d)).length + " of " + upTo(n).length]);
+  const dayHead = n => ["Name", "Emp ID", "Dept", "Day " + n + " score", "Day " + n + " max", "Day " + n + " %", "Aggregate up to day " + n, "Aggregate max", "Aggregate %", "Days attempted"];
+  const matrixRows = n => plist.filter(p => upTo(n).some(d => took(p, d))).map(p => [p.name, p.emp, p.dept].concat(upTo(n).map(d => took(p, d) ? dayScore(p, d) : "Absent"), [aggScore(p, n), aggMax(n), pct(aggScore(p, n), aggMax(n))]));
+  const matrixHead = n => ["Name", "Emp ID", "Dept"].concat(upTo(n).map(d => "Day " + d + " (max " + (dayMax[d] || 0) + ")"), ["Aggregate", "Aggregate max", "Aggregate %"]);
+  // feedback: latest per person per quiz
+  const fbLatest = {}; fbAll.forEach(f => { fbLatest[String(f.quizId) + "|" + String(f.emp).trim().toLowerCase()] = f; });
+  const fbList = Object.values(fbLatest).sort((a, b) => (Number(a.day) || 0) - (Number(b.day) || 0) || String(a.time).localeCompare(String(b.time)));
+  const fbSummary = () => {
+    const g = {}; fbList.forEach(f => { const k = String(f.quizId); const o = g[k] = g[k] || { day:Number(f.day) || dayOf[k] || 0, title:f.quizTitle || titleOf[k] || k, speaker:f.speaker || "", n:0, a:0, b:0 }; o.n++; o.a += Number(f.speakerRating) || 0; o.b += Number(f.relevanceRating) || 0; });
+    return Object.values(g).sort((x, y) => x.day - y.day).map(o => [o.day || "", o.title, o.speaker, o.n, Math.round(o.a / o.n * 100) / 100, Math.round(o.b / o.n * 100) / 100]);
+  };
+  const fbSummaryHead = ["Day", "Quiz", "Speaker", "Responses", "Average speaker rating (of 5)", "Average topic relevance (of 5)"];
+  const fmtT = v => { const t = new Date(v); return isNaN(t) ? String(v) : t.toLocaleString("en-GB", { year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", hour12:false }); };
+  const table = (h, rows) => `<div class="tablewrap"><table class="data"><thead><tr>${h.map(x => `<th>${esc(x)}</th>`).join("")}</tr></thead><tbody>${rows.length ? rows.map(rw => `<tr>${rw.map((c, i) => `<td class="${typeof c === "number" ? "num" : ""}">${esc(c)}</td>`).join("")}</tr>`).join("") : `<tr><td colspan="${h.length}" class="muted">Nothing yet.</td></tr>`}</tbody></table></div>`;
+  $("#view").innerHTML = head + `<div class="panel"><h2>Scores by day</h2>
+      <p class="hint">Each person's best attempt per quiz counts. “Aggregate” adds the day scores from day 1 up to the chosen day; a day someone did not attempt counts as zero.</p>
+      <div class="row"><div class="field" style="min-width:180px"><label for="rDay">Day</label><select id="rDay">${days.map(d => `<option value="${d}">Day ${d}</option>`).join("")}</select></div></div>
+      <div class="row"><button class="btn primary" id="dlDay">Download Day scores + aggregate (Excel)</button><button class="btn" id="dlMatrix">Download all days up to this day (Excel)</button></div>
+      <div id="rTable"></div></div>
+    <div class="panel"><h2>Feedback</h2><p class="hint">Speaker and topic ratings out of 5, one response per person per quiz.</p>
+      <div class="row"><button class="btn primary" id="dlFb" ${fbList.length ? "" : "disabled"}>Download feedback (Excel)</button></div>
+      ${table(fbSummaryHead, fbSummary())}</div>`;
+  const sel = $("#rDay"); sel.value = String(days[days.length - 1]);
+  const draw = () => { const n = +sel.value; $("#rTable").innerHTML = `<h3 style="margin:12px 0 6px;font-size:15px">Day ${n} and aggregate up to day ${n} · ${dayRows(n).length} people</h3>` + table(dayHead(n), dayRows(n)); };
+  sel.onchange = draw; draw();
+  $("#dlDay").onclick = () => { const n = +sel.value; downloadXlsx("day-" + n + "-scores", [{ name:"Day " + n, header:dayHead(n), rows:dayRows(n) }]); };
+  $("#dlMatrix").onclick = () => { const n = +sel.value; downloadXlsx("scores-up-to-day-" + n, [{ name:"Up to day " + n, header:matrixHead(n), rows:matrixRows(n) }]); };
+  $("#dlFb").onclick = () => downloadXlsx("session-feedback", [
+    { name:"Responses", header:["Submitted", "Day", "Quiz", "Speaker", "Name", "Emp ID", "Dept", "Speaker rating (1-5)", "Topic relevance (1-5)", "Comment"],
+      rows:fbList.map(f => [fmtT(f.time), f.day || dayOf[String(f.quizId)] || "", f.quizTitle || titleOf[String(f.quizId)] || "", f.speaker || "", f.name, String(f.emp), f.dept || "", Number(f.speakerRating), Number(f.relevanceRating), f.comment || ""]) },
+    { name:"Averages", header:fbSummaryHead, rows:fbSummary() }]);
+}
+
 /* ---------- results ---------- */
 async function viewResults(id){
   const qs = await loadAdmin(false); if(!qs) return;
@@ -880,7 +1059,7 @@ async function viewResults(id){
   $("#csv").onclick = () => {
     const head = ["Submitted","Name","Emp ID","Dept","Score","Total","Percent","Passed","Time taken (s)","Left full screen","Tab switches","Answers"];
     const q = v => { const s = String(v ?? ""); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
-    const csv = [head, ...rows.map(x => [x.time, x.name, x.emp, x.dept, x.score, x.total, x.percent, x.passed, x.timeTakenSec, x.fullscreenExits, x.tabSwitches, x.answers])].map(r => r.map(q).join(",")).join("\r\n");
+    const csv = [head, ...rows.map(x => [(() => { const t = new Date(x.time); return isNaN(t) ? x.time : t.toLocaleString("en-GB", { year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false }); })(), x.name, x.emp, x.dept, x.score, x.total, x.percent, x.passed, x.timeTakenSec, x.fullscreenExits, x.tabSwitches, x.answers])].map(r => r.map(q).join(",")).join("\r\n");
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type:"text/csv" }));
     a.download = slug(quiz.title) + "-results.csv"; document.body.appendChild(a); a.click(); a.remove();
   };

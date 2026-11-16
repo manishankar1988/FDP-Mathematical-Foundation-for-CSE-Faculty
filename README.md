@@ -56,6 +56,9 @@ All three pages share **one** script and **one** Google Sheet: `apps-script/FDPB
   The quiz appears as "Opens soon" on the lobby, goes live by itself, and stops accepting answers at the closing time.
   People still answering are submitted automatically at that moment (answers arriving up to 90 seconds late are still accepted).
   Leave a time empty to open as soon as published, or to close only when you press the button.
+- **Import questions from Excel**: in the quiz editor click *Import from spreadsheet*, then *Download Excel template*, fill it in and *Upload filled Excel file* (or paste rows copied from Excel/Sheets).
+- **FDP day, speaker and feedback**: under *FDP session* in the quiz editor, enter the quiz's day number and the speaker. With *Ask for feedback* ticked, participants rate the speaker and the topic's relevance from 1 to 5 (plus an optional comment) right after the quiz.
+- **Reports and downloads** (button on the quiz list): pick a day to download that day's scores together with the aggregate up to that day, or the day-by-day table up to that day, as Excel files. Feedback downloads as Excel with a second sheet of averages per quiz.
 - On the quiz list: **Publish now**, **Close now**, **Unpublish**, **Reopen** (for a quiz whose time has passed), **Edit**, **Results**.
 - Times are entered in the coordinator's computer time zone. Error messages that quote a time use the Apps Script
   project's time zone (Apps Script → Project Settings).
