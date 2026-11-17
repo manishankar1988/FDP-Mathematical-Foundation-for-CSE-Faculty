@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FDP Live Game</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* Live game: a lobby, one big question at a time with a countdown, results with the right answer and points,
+   and a coordinator control room with a live answer chart. */
+:root{
+  --bg:#f3f5f4; --surface:#ffffff; --sunken:#e7ecea; --ink:#13201e; --muted:#58645f; --line:#d3dbd8;
+  --accent:#0d6b5c; --accent-ink:#ffffff; --accent-soft:#d8ebe6; --brass:#9a6412; --brass-soft:#f3e5c9;
+  --good:#1f7a3d; --good-soft:#dbeee1; --bad:#b4372b; --bad-soft:#f5dcd8;
+  --c0:#b3322a; --c1:#1f5fbf; --c2:#8a5a00; --c3:#1f7a3d; --c4:#6b3fa0; --c5:#0b6a78;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1514; --surface:#151f1d; --sunken:#1c2826; --ink:#e2ebe8; --muted:#9aa9a5; --line:#2c3b38;
+  --accent:#43bfa6; --accent-ink:#06201b; --accent-soft:#163a33; --brass:#e1a94c; --brass-soft:#3a2c14;
+  --good:#5cc983; --good-soft:#163222; --bad:#ef7d70; --bad-soft:#3b1b18; color-scheme:dark;}}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
+[hidden]{display:none!important}
+a{color:var(--accent)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3,h4{margin:0;line-height:1.25;text-wrap:balance}
+.mono{font-family:var(--mono)} .muted{color:var(--muted)}
+.eyebrow{font:500 11.5px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.topbar{background:var(--surface);border-bottom:1px solid var(--line);padding:10px max(16px,env(safe-area-inset-left,0px));display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);min-width:0}
+.mark{width:34px;height:34px;border-radius:8px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font:600 13px var(--mono);flex:none}
+.brand b{display:block} .brand small{display:block;color:var(--muted);font-size:12px}
+.spacer{flex:1}
+main{padding:24px max(16px,env(safe-area-inset-left,0px)) 64px}
+.wrap{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.narrow{max-width:520px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:500;font-size:14px;text-decoration:none;color:var(--ink);white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.danger{color:var(--bad);border-color:var(--bad-soft)}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+.btn.small{padding:4px 10px;font-size:13px} .btn.big{padding:14px 22px;font-size:17px}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel h2{font-size:18px} .panel p{margin:0}
+.err{color:var(--bad);font-size:13.5px;min-height:1.1em}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field label{font-size:12.5px;font-weight:600}
+.field small{color:var(--muted);font-size:12px}
+input[type=text],input[type=password],input[type=number],select,textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg);min-width:0}
+textarea{resize:vertical;line-height:1.45}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table.data{border-collapse:collapse;width:100%;font-size:14px}
+table.data th,table.data td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.data th{background:var(--sunken);font-weight:600}
+table.data tr:last-child td{border-bottom:0} table.data td.wrap{white-space:normal} td.num{text-align:right;font-variant-numeric:tabular-nums}
+.badge{display:inline-block;font:600 11px var(--mono);letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:4px;background:var(--sunken);color:var(--muted)}
+.badge.on{background:var(--good-soft);color:var(--good)} .badge.sched{background:var(--brass-soft);color:var(--brass)}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:14px;z-index:50;max-width:90vw}
+
+/* ---- the player screen ---- */
+.stage{max-width:880px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.hud{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.hud .pill{font:600 13px var(--mono);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:5px 12px}
+.qcard{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:14px}
+.qcard h2{font-size:clamp(20px,3.6vw,30px);font-weight:600}
+.timer{display:flex;align-items:center;gap:12px}
+.tbar{flex:1;height:12px;border-radius:99px;background:var(--sunken);overflow:hidden}
+.tbar i{display:block;height:100%;background:var(--accent);width:100%}
+.tbar i.low{background:var(--bad)}
+.tnum{font:600 22px var(--mono);min-width:3ch;text-align:right}
+.opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.opt{position:relative;display:flex;align-items:center;gap:12px;border:0;border-radius:12px;padding:18px 16px;min-height:84px;text-align:left;cursor:pointer;color:#fff;font-size:clamp(16px,2.6vw,21px);font-weight:600;overflow:hidden}
+.opt:disabled{cursor:default}
+.opt .shape{font-size:24px;flex:none;width:30px;text-align:center}
+.opt .ltr{font:600 13px var(--mono);background:rgba(255,255,255,.22);border-radius:6px;padding:2px 7px;flex:none}
+.opt .txt{flex:1;min-width:0;overflow-wrap:anywhere}
+.opt .bar{position:absolute;inset:0 auto 0 0;background:rgba(0,0,0,.28);width:0;transition:width .5s}
+.opt>*:not(.bar){position:relative;z-index:1}
+.opt .cnt{font:600 16px var(--mono)}
+.c0{background:var(--c0)}.c1{background:var(--c1)}.c2{background:var(--c2)}.c3{background:var(--c3)}.c4{background:var(--c4)}.c5{background:var(--c5)}
+.opt.dim{opacity:.38}
+.opt.mine{outline:4px solid var(--ink);outline-offset:2px}
+.opt.right::after{content:"✓ correct";position:absolute;right:12px;top:8px;z-index:2;font:600 12px var(--mono);background:#fff;color:#14532d;border-radius:5px;padding:2px 8px}
+.msg{border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:4px}
+.msg.good{background:var(--good-soft);color:var(--good)} .msg.bad{background:var(--bad-soft);color:var(--bad)} .msg.neutral{background:var(--sunken)}
+.msg b{font-size:22px}
+.msg span{color:var(--ink);font-size:14px}
+.big-center{text-align:center;padding:44px 16px;display:flex;flex-direction:column;gap:12px;align-items:center}
+.big-center h1{font-size:clamp(24px,5vw,38px)}
+.pulse{width:14px;height:14px;border-radius:50%;background:var(--accent);animation:p 1.2s infinite}
+@keyframes p{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1.1)}}
+@media (prefers-reduced-motion:reduce){.pulse{animation:none}.opt .bar{transition:none}}
+.lb{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.lb li{display:flex;gap:10px;align-items:center;background:var(--sunken);border-radius:9px;padding:9px 12px}
+.lb li.me{outline:2px solid var(--accent)}
+.lb .rk{font:600 14px var(--mono);width:2.2ch}
+.lb .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb .pt{font:600 14px var(--mono)}
+.code{font:700 clamp(34px,8vw,64px)/1 var(--mono);letter-spacing:.12em}
+/* ---- control room ---- */
+.ctrl{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:16px;align-items:start}
+.qlist{display:flex;flex-direction:column;gap:6px}
+.qli{display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:var(--surface)}
+.qli.cur{border-color:var(--accent);background:var(--accent-soft)}
+.qli .n{font:600 13px var(--mono);width:3ch}
+.qli .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qedit{border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;background:var(--bg)}
+.qedit header{display:flex;align-items:center;gap:8px}
+.oprow{display:flex;gap:8px;align-items:center}
+.oprow .l{font:600 13px var(--mono);width:2ch}
+@media (max-width:760px){.opts{grid-template-columns:1fr}.ctrl{grid-template-columns:1fr}.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="#home"><span class="mark">L</span><span><b>FDP Live Game</b><small>Department of CSE · Sahrdaya College of Engineering and Technology</small></span></a>
+  <span class="spacer"></span>
+  <a class="btn ghost small" href="#host" id="hostLink">Coordinator</a>
+</header>
+<main><div class="wrap" id="view"></div></main>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* =====================================================================
+   SETTINGS: use the same Apps Script URL as the other pages
+   ===================================================================== */
+const CONFIG = {
+  SCRIPT_URL: "https://script.google.com/macros/s/AKfycbyCqh_R7I8jr4ZK_W2NMLWRKk0xU4ufNYfuLMhISPHfcgbtUG_T1TUoEJIYZeStAKC9bA/exec",
+  POLL_MS: 1500
+};
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const rich = s => esc(s).replace(/\n/g, "<br>");
+const LET = "ABCDEF", SHAPES = ["▲", "◆", "●", "■", "★", "⬟"];
+function toast(m){ const t = $("#toast"); t.textContent = m; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, 2800); }
+function math(el){
+  if(!el) return;
+  if(window.renderMathInElement){ try{ renderMathInElement(el, { delimiters:[{left:"$$",right:"$$",display:true},{left:"$",right:"$",display:false}], throwOnError:false }); }catch(e){} }
+  else setTimeout(() => math(el), 300);
+}
+function readJSON(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } }
+function writeJSON(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+function copyText(t){ if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(() => toast("Copied."), () => toast(t)); else toast(t); }
+const joinLink = code => location.origin + location.pathname + "#join-" + code;
+
+/* server clock: timers follow the server, not this device */
+let SKEW = 0;
+const nowMs = () => Date.now() + SKEW;
+function syncClock(serverNow, sentAt){ if(Number(serverNow) > 0) SKEW = Number(serverNow) - (sentAt + (Date.now() - sentAt) / 2); }
+
+/* ---------- server calls ---------- */
+async function get(params){ const r = await fetch(CONFIG.SCRIPT_URL + "?" + new URLSearchParams(params)); return r.json(); }
+async function post(body){ const r = await fetch(CONFIG.SCRIPT_URL, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body: JSON.stringify(body) }); return r.json(); }
+async function call(fn){
+  try{ return (await fn()) || { error:"No response from the server." }; }
+  catch(e){ return { error:"Could not reach the server. Check your internet connection." }; }
+}
+
+/* =====================================================================
+   ROUTER
+   ===================================================================== */
+let TICK = null, POLL = null, GEN = 0;
+function stopLoops(){ clearInterval(TICK); clearTimeout(POLL); TICK = POLL = null; GEN++; }
+function route(){
+  stopLoops();
+  const h = location.hash || "#home"; let m;
+  if(!CONFIG.SCRIPT_URL){ $("#view").innerHTML = `<div class="panel narrow" style="margin:0 auto"><h2>Not connected</h2><p class="muted">Set SCRIPT_URL in live/index.html to your Apps Script web-app URL.</p></div>`; return; }
+  if((m = h.match(/^#join-(.+)$/))) return viewJoin(decodeURIComponent(m[1]).toUpperCase());
+  if((m = h.match(/^#play-(.+)$/))) return viewPlay(decodeURIComponent(m[1]).toUpperCase());
+  if(h === "#host") return viewHostHome();
+  if(h === "#host-new") return viewEditor(null);
+  if((m = h.match(/^#host-edit-(.+)$/))) return viewEditor(decodeURIComponent(m[1]));
+  if((m = h.match(/^#host-(.+)$/))) return viewControl(decodeURIComponent(m[1]));
+  return viewJoin("");
+}
+window.addEventListener("hashchange", () => { route(); window.scrollTo(0, 0); });
+
+/* =====================================================================
+   PARTICIPANT
+   ===================================================================== */
+function viewJoin(code){
+  const u = readJSON("fl:user", {});
+  $("#view").innerHTML = `<form class="panel narrow" id="joinForm" style="margin:0 auto;width:100%" novalidate>
+    <div class="eyebrow">Live game</div><h1 style="font-size:26px">Join the game</h1>
+    <p class="muted">Enter the code shown on the screen by your coordinator.</p>
+    <div class="field"><label for="jCode">Game code</label><input type="text" id="jCode" maxlength="8" autocomplete="off" autocapitalize="characters" value="${esc(code)}" style="font:600 22px var(--mono);letter-spacing:.2em;text-transform:uppercase"></div>
+    <div class="field"><label for="jName">Your name</label><input type="text" id="jName" autocomplete="name" value="${esc(u.name || "")}"></div>
+    <div class="grid2"><div class="field"><label for="jEmp">Employee ID</label><input type="text" id="jEmp" autocomplete="off" value="${esc(u.emp || "")}"></div>
+      <div class="field"><label for="jDept">Department</label><input type="text" id="jDept" value="${esc(u.dept || "CSE")}"></div></div>
+    <div class="err" id="jErr"></div><button class="btn primary big" type="submit" id="jGo">Join</button></form>`;
+  $(code ? "#jName" : "#jCode").focus();
+  $("#joinForm").onsubmit = async e => {
+    e.preventDefault();
+    const c = $("#jCode").value.trim().toUpperCase(), name = $("#jName").value.trim(), emp = $("#jEmp").value.trim(), dept = $("#jDept").value.trim() || "CSE";
+    if(!c || !name || !emp){ $("#jErr").textContent = "Enter the game code, your name and your employee ID."; return; }
+    $("#jGo").disabled = true; $("#jErr").textContent = "";
+    const r = await call(() => post({ action:"liveJoin", game:c, name, emp, dept }));
+    $("#jGo").disabled = false;
+    if(r.error){ $("#jErr").textContent = r.error; return; }
+    writeJSON("fl:user", { name, emp, dept });
+    location.hash = "#play-" + c;
+  };
+}
+
+const P = { code:"", user:null, sig:"", s:null, locked:null };
+function viewPlay(code){
+  P.code = code; P.user = readJSON("fl:user", null); P.sig = ""; P.s = null; P.locked = null;
+  if(!P.user || !P.user.name || !P.user.emp){ location.hash = "#join-" + code; return; }
+  $("#view").innerHTML = `<div class="stage"><div class="hud" id="hud"></div><div id="screen"><div class="big-center"><span class="pulse"></span><p class="muted">Connecting…</p></div></div></div>`;
+  const gen = GEN;
+  const loop = async () => {
+    if(gen !== GEN) return;
+    const sent = Date.now();
+    const s = await call(() => get({ action:"liveState", game:code, emp:P.user.emp }));
+    if(gen !== GEN) return;
+    if(s.error){ $("#screen").innerHTML = `<div class="panel"><h2>Can't open this game</h2><p class="err">${esc(s.error)}</p><a class="btn" href="#join-${esc(code)}">Back</a></div>`; if(/No game/.test(s.error)) return; }
+    else { syncClock(s.now, sent); renderPlay(s); }
+    POLL = setTimeout(loop, CONFIG.POLL_MS);
+  };
+  loop();
+  TICK = setInterval(tickPlay, 200);
+}
+function hud(s){
+  const me = s.myTotal !== undefined ? `<span class="pill" title="Your score">${s.myTotal} pts</span><span class="pill" title="Your rank">#${s.myRank} of ${s.players}</span>` : `<span class="pill">0 pts</span>`;
+  $("#hud").innerHTML = `<b>${esc(s.title)}</b><span class="spacer"></span>${s.qIndex >= 0 && s.phase !== "lobby" ? `<span class="pill">Question ${s.qIndex + 1} of ${s.total}</span>` : ""}${me}<span class="pill">${esc(P.user.name)}</span>`;
+}
+function renderPlay(s){
+  P.s = s; hud(s);
+  const q = s.question, sig = [s.phase, s.qIndex, s.me ? "a" : "n", P.locked === s.qIndex ? "l" : "", s.counts ? "c" : "", s.myTotal].join("|");
+  if(sig === P.sig){ const pc = $("#pcount"); if(pc) pc.textContent = s.players; return; }
+  P.sig = sig;
+  const box = $("#screen");
+  if(s.phase === "lobby"){
+    box.innerHTML = `<div class="qcard big-center"><span class="pulse"></span><h1>You're in, ${esc(P.user.name.split(" ")[0])}!</h1><p class="muted">Waiting for the coordinator to start. <b id="pcount">${s.players}</b> joined so far.</p></div>`; return;
+  }
+  if(s.phase === "finished"){
+    const lb = (s.leaderboard || []).map((x, i) => `<li class="${x.name === P.user.name ? "me" : ""}"><span class="rk">${i + 1}</span><span class="nm">${esc(x.name)}</span><span class="pt">${x.total}</span></li>`).join("");
+    box.innerHTML = `<div class="qcard"><div class="eyebrow">Final results</div><h2>${s.myRank ? "You finished #" + s.myRank + " with " + s.myTotal + " points" : "Game over"}</h2>
+      ${s.myCorrect !== undefined ? `<p class="muted">${s.myCorrect} correct answer${s.myCorrect === 1 ? "" : "s"}.</p>` : ""}<ul class="lb">${lb}</ul></div>`; return;
+  }
+  const answered = s.me || (P.locked === s.qIndex);
+  const mine = s.me ? s.me.choice : (P.locked === s.qIndex ? P.choice : -1);
+  if(s.phase === "question"){
+    box.innerHTML = `<div class="qcard"><div class="timer"><div class="tbar"><i id="tbar"></i></div><span class="tnum" id="tnum"></span></div>
+      <h2>${rich(q.text)}</h2>${q.poll ? `<p class="muted">This is an opinion poll: there is no right answer and no points.</p>` : ""}
+      <div class="opts" id="opts">${q.options.map((o, i) => `<button class="opt c${i} ${answered && mine === i ? "mine" : ""} ${answered && mine !== i ? "dim" : ""}" data-i="${i}" ${answered ? "disabled" : ""}><span class="shape" aria-hidden="true">${SHAPES[i]}</span><span class="ltr">${LET[i]}</span><span class="txt">${rich(o)}</span></button>`).join("")}</div>
+      <div id="qnote" class="muted" aria-live="polite">${answered ? "Answer locked in. Waiting for the timer…" : "Tap your answer. Faster correct answers score more."}</div></div>`;
+    math(box);
+    box.querySelectorAll(".opt").forEach(b => b.onclick = () => sendAnswer(+b.dataset.i));
+    tickPlay(); return;
+  }
+  // results
+  const total = (s.counts || []).reduce((a, b) => a + b, 0) || 0;
+  const me = s.me;
+  let msg;
+  if(q.poll) msg = `<div class="msg neutral"><b>${me ? "Thanks for voting" : "You did not vote"}</b><span>Here is what everyone chose.</span></div>`;
+  else if(!me) msg = `<div class="msg bad"><b>Time's up</b><span>You did not answer this one. +0 points.</span></div>`;
+  else if(me.points > 0) msg = `<div class="msg good"><b>Correct! +${me.points} points</b><span>You answered in ${(me.ms / 1000).toFixed(1)} seconds. Faster answers score more.</span></div>`;
+  else msg = `<div class="msg bad"><b>Not quite</b><span>The right answer is highlighted below. +0 points.</span></div>`;
+  const lb = (s.leaderboard || []).map((x, i) => `<li class="${x.name === P.user.name ? "me" : ""}"><span class="rk">${i + 1}</span><span class="nm">${esc(x.name)}</span><span class="pt">${x.total}</span></li>`).join("");
+  box.innerHTML = `<div class="qcard"><h2>${rich(q.text)}</h2>${msg}
+    <div class="opts">${q.options.map((o, i) => `<div class="opt c${i} ${!q.poll && i !== q.correct ? "dim" : ""} ${!q.poll && i === q.correct ? "right" : ""} ${me && me.choice === i ? "mine" : ""}"><span class="bar" style="width:${total ? Math.round(s.counts[i] / total * 100) : 0}%"></span><span class="shape" aria-hidden="true">${SHAPES[i]}</span><span class="ltr">${LET[i]}</span><span class="txt">${rich(o)}</span><span class="cnt">${s.counts[i]}</span></div>`).join("")}</div>
+    ${s.explanation ? `<p class="muted">${rich(s.explanation)}</p>` : ""}
+    <div class="muted">Waiting for the coordinator to release the next question…</div></div>
+    ${lb ? `<div class="qcard"><div class="eyebrow">Leaderboard</div><ul class="lb">${lb}</ul></div>` : ""}`;
+  math(box);
+}
+function tickPlay(){
+  const s = P.s; if(!s || s.phase !== "question") return;
+  const q = s.question, left = Math.max(0, (q.endsAt - nowMs()) / 1000), span = q.seconds;
+  const bar = $("#tbar"), num = $("#tnum"); if(!bar) return;
+  bar.style.width = Math.min(100, left / span * 100) + "%"; bar.classList.toggle("low", left <= 5);
+  num.textContent = Math.ceil(left);
+  if(left <= 0){
+    const note = $("#qnote");
+    if(note && !(s.me || P.locked === s.qIndex)){ note.textContent = "Time's up. Waiting for the results…"; document.querySelectorAll("#opts .opt").forEach(b => b.disabled = true); }
+    else if(note) note.textContent = "Waiting for the results…";
+  }
+}
+async function sendAnswer(i){
+  const s = P.s; if(!s || s.phase !== "question" || P.locked === s.qIndex) return;
+  P.locked = s.qIndex; P.choice = i; P.sig = "";       // lock the buttons at once
+  renderPlay(s);
+  const r = await call(() => post({ action:"liveAnswer", game:P.code, name:P.user.name, emp:P.user.emp, dept:P.user.dept, choice:i }));
+  if(r.error){ P.locked = null; P.sig = ""; toast(r.error); renderPlay(P.s); }
+}
+
+/* =====================================================================
+   COORDINATOR
+   ===================================================================== */
+const H = { key: null };
+try{ H.key = sessionStorage.getItem("fl:key"); }catch(e){}
+async function hostCall(body){
+  const r = await call(() => post(Object.assign({ key:H.key }, body)));
+  if(r.error && /coordinator key/i.test(r.error)){ H.key = null; try{ sessionStorage.removeItem("fl:key"); }catch(e){} }
+  return r;
+}
+function needKey(){
+  $("#view").innerHTML = `<form class="panel narrow" id="keyForm" style="margin:0 auto;width:100%" novalidate><div class="eyebrow">Coordinator</div><h2>Sign in to run live games</h2>
+    <p class="muted">Enter the coordinator key you set as ADMIN_KEY in the Apps Script.</p>
+    <div class="field"><label for="ckey">Coordinator key</label><input type="password" id="ckey" autocomplete="off"></div>
+    <div class="err" id="kErr"></div><button class="btn primary" type="submit">Sign in</button></form>`;
+  $("#keyForm").onsubmit = async e => {
+    e.preventDefault(); H.key = $("#ckey").value;
+    const r = await hostCall({ action:"adminLiveList" });
+    if(r.error){ $("#kErr").textContent = r.error; H.key = null; return; }
+    try{ sessionStorage.setItem("fl:key", H.key); }catch(e){}
+    route();
+  };
+}
+const STATUS = { draft:"Draft", lobby:"Lobby open", running:"Running", finished:"Finished" };
+async function viewHostHome(){
+  if(!H.key) return needKey();
+  $("#view").innerHTML = `<div class="panel"><p class="muted">Loading…</p></div>`;
+  const r = await hostCall({ action:"adminLiveList" });
+  if(r.error){ return H.key ? ($("#view").innerHTML = `<div class="panel"><p class="err">${esc(r.error)}</p></div>`) : needKey(); }
+  $("#view").innerHTML = `<section class="row" style="justify-content:space-between"><div><div class="eyebrow">Coordinator</div><h1 style="font-size:26px">Live games</h1></div>
+    <div class="row"><a class="btn primary" href="#host-new">+ New game</a><button class="btn ghost" id="signOut">Sign out</button></div></section>
+    <div class="tablewrap"><table class="data"><thead><tr><th>Game</th><th>Code</th><th>Status</th><th>Questions</th><th></th></tr></thead><tbody>
+    ${r.games.length ? r.games.map(g => `<tr><td class="wrap"><b>${rich(g.title)}</b></td><td class="mono"><b>${esc(g.id)}</b></td><td><span class="badge ${g.status === "running" || g.status === "lobby" ? "on" : ""}">${STATUS[g.status] || g.status}</span></td><td class="num">${g.count}</td>
+      <td><div class="row"><a class="btn small primary" href="#host-${esc(g.id)}">Run</a><a class="btn small" href="#host-edit-${esc(g.id)}">Edit</a><button class="btn small danger" data-del="${esc(g.id)}">Delete</button></div></td></tr>`).join("") : `<tr><td colspan="5" class="wrap muted">No games yet. Click “New game”, add questions, then run it.</td></tr>`}
+    </tbody></table></div>
+    <div class="panel"><h2>How a live game works</h2><ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px">
+      <li>Create a game with questions. A question with a correct answer is scored: 500 to 1000 points, more for a faster answer. A question with no correct answer is an opinion poll (no points).</li>
+      <li>Run it, show the code or join link to the room, and wait for faculty to join.</li>
+      <li>Release questions one by one whenever you like. You see every answer arrive live. The right answer and points are shown to faculty when the time ends.</li>
+      <li>End the game to show the final leaderboard, then download the results as Excel.</li></ol></div>`;
+  $("#signOut").onclick = () => { H.key = null; try{ sessionStorage.removeItem("fl:key"); }catch(e){} location.hash = "#home"; route(); };
+  document.querySelectorAll("[data-del]").forEach(b => b.onclick = async () => {
+    if(!b.dataset.armed){ b.dataset.armed = "1"; b.textContent = "Click again to delete"; return; }
+    const d = await hostCall({ action:"adminLiveDelete", game:b.dataset.del }); if(d.error){ toast(d.error); return; } toast("Game deleted."); viewHostHome();
+  });
+}
+
+/* ---------- editor ---------- */
+let ED = null;
+async function viewEditor(id){
+  if(!H.key) return needKey();
+  if(id){
+    const r = await hostCall({ action:"adminLiveHost", game:id });
+    if(r.error){ toast(r.error); location.hash = "#host"; return; }
+    ED = { id, title:r.game.title, questions:r.game.questions.map(q => Object.assign({}, q, { options:q.options.slice() })) };
+  } else ED = { id:"", title:"", questions:[blankQ()] };
+  renderEditor();
+}
+const blankQ = () => ({ text:"", options:["", "", "", ""], correct:0, seconds:20, explanation:"" });
+function renderEditor(){
+  const e = ED;
+  $("#view").innerHTML = `<section class="row" style="justify-content:space-between"><div><div class="eyebrow"><a href="#host">Live games</a> / ${e.id ? "Edit" : "New"}</div><h1 style="font-size:24px">${e.id ? "Edit game" : "Create a game"}</h1></div>
+      <div class="row"><a class="btn" href="#host">Cancel</a><button class="btn primary" id="saveTop">Save game</button></div></section>
+    <div class="panel"><div class="field"><label for="gTitle">Game title</label><input type="text" id="gTitle" value="${esc(e.title)}" placeholder="e.g. Linear Algebra warm-up · Day 1"></div></div>
+    <div class="panel"><div class="row" style="justify-content:space-between"><h2>Questions (<span id="qCount">${e.questions.length}</span>)</h2>
+      <div class="row"><button class="btn" id="addQ">+ Add question</button><button class="btn" id="impToggle">Import from Excel</button></div></div>
+      <p class="muted" style="font-size:13px">Choose the correct option for a scored question, or “No correct answer” to make it an opinion poll. Maths between dollar signs, e.g. <span class="mono">$A^{-1}$</span>.</p>
+      <div id="impBox" hidden class="qedit"><b>Import questions</b>
+        <p class="muted" style="font-size:13px;margin:0">Columns: Question · Option A · B · C · D · Correct (A–D, leave empty for a poll) · Seconds (optional) · Explanation (optional).</p>
+        <textarea id="impText" rows="5" placeholder="What is 2 + 2?&#9;3&#9;4&#9;5&#9;6&#9;B&#9;20&#9;Basic addition"></textarea>
+        <div class="row"><button class="btn primary small" id="impGo">Add pasted rows</button><button class="btn small" id="impTpl">Download Excel template</button>
+          <label class="btn small primary" for="impFile" style="cursor:pointer">Upload filled Excel file</label><input type="file" id="impFile" accept=".xlsx,.xls,.csv" hidden><span class="err" id="impErr"></span></div></div>
+      <div id="qList" style="display:flex;flex-direction:column;gap:12px"></div></div>
+    <div class="row"><button class="btn primary" id="saveBot">Save game</button><a class="btn" href="#host">Cancel</a></div><div class="err" id="eErr"></div>`;
+  renderQs();
+  $("#gTitle").oninput = () => { e.title = $("#gTitle").value; };
+  $("#addQ").onclick = () => { e.questions.push(blankQ()); renderQs(); const t = document.querySelectorAll("#qList textarea"); t[t.length - 1].focus(); };
+  $("#impToggle").onclick = () => { $("#impBox").hidden = !$("#impBox").hidden; };
+  const importRows = rows => {
+    let added = 0, bad = [];
+    rows.forEach((r, i) => {
+      if(i === 0 && /question/i.test(r[0] || "") && /option|^a$/i.test(r[1] || "")) return;
+      const opts = r.slice(1, 5).map(x => String(x ?? "").trim()).filter(Boolean), letter = String(r[5] ?? "").trim().toUpperCase();
+      const correct = letter === "" ? -1 : (/^[A-D]$/.test(letter) ? LET.indexOf(letter) : -2);
+      if(!String(r[0] ?? "").trim() || opts.length < 2 || correct === -2 || correct >= opts.length){ bad.push(i + 1); return; }
+      e.questions.push({ text:String(r[0]).trim(), options:opts, correct, seconds:Math.min(300, Math.max(5, parseInt(r[6], 10) || 20)), explanation:String(r[7] ?? "").trim() }); added++;
+    });
+    e.questions = e.questions.filter(q => q.text.trim() || q.options.some(o => o.trim()));
+    renderQs();
+    $("#impErr").textContent = bad.length ? `Skipped row${bad.length > 1 ? "s" : ""} ${bad.join(", ")}: each row needs a question, at least two options and a correct letter A–D (or empty for a poll).` : "";
+    if(added) toast(`${added} question${added > 1 ? "s" : ""} added.`);
+    return added;
+  };
+  $("#impGo").onclick = () => { if(importRows(parseTable($("#impText").value))) $("#impText").value = ""; };
+  $("#impTpl").onclick = () => downloadXlsx("live-game-template", [
+    { name:"Questions", header:["Question", "Option A", "Option B", "Option C", "Option D", "Correct (A-D, empty = poll)", "Seconds", "Explanation (optional)"],
+      rows:[["What is 2 + 2?", "3", "4", "5", "6", "B", "20", "Basic addition."], ["Which topic should we spend more time on?", "Vectors", "Matrices", "Eigenvalues", "Norms", "", "30", ""]] },
+    { name:"How to use", header:["Instructions"], rows:[["Keep the sheet named Questions. Delete the example rows."], ["One question per row. Leave Correct empty to make an opinion poll (no points)."], ["Seconds is how long faculty have to answer (5 to 300). Empty = 20."], ["Format the option columns as Text so entries like 4, 5 are not turned into dates."]] }]);
+  $("#impFile").onchange = async ev => {
+    const file = ev.target.files[0]; ev.target.value = ""; if(!file) return;
+    if(!window.XLSX){ $("#impErr").textContent = "The Excel reader has not loaded. Check your connection, or paste the rows instead."; return; }
+    try{
+      const wb = XLSX.read(await file.arrayBuffer(), { type:"array" });
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header:1, raw:false, defval:"" }).filter(r => r.some(c => String(c).trim()));
+      if(!rows.length){ $("#impErr").textContent = "That file has no rows."; return; }
+      if(!importRows(rows) && !$("#impErr").textContent) $("#impErr").textContent = "No questions were found in that file.";
+    }catch(err){ $("#impErr").textContent = "Could not read that file. Save it as .xlsx or .csv and try again."; }
+  };
+  const save = async () => {
+    e.title = $("#gTitle").value.trim();
+    const err = validateGame(e); if(err){ $("#eErr").textContent = err; toast(err); return; }
+    $("#saveTop").disabled = $("#saveBot").disabled = true;
+    const r = await hostCall({ action:"adminLiveSave", game:{ id:e.id, title:e.title, questions:e.questions } });
+    $("#saveTop").disabled = $("#saveBot").disabled = false;
+    if(r.error){ $("#eErr").textContent = r.error; toast(r.error); return; }
+    toast("Game saved."); location.hash = "#host-" + r.id;
+  };
+  $("#saveTop").onclick = save; $("#saveBot").onclick = save;
+}
+function validateGame(e){
+  if(!e.title) return "Give the game a title.";
+  if(!e.questions.length) return "Add at least one question.";
+  for(let i = 0; i < e.questions.length; i++){
+    const q = e.questions[i], n = i + 1; q.options = q.options.map(o => o.trim());
+    if(!q.text.trim()) return `Question ${n} has no text.`;
+    if(q.options.filter(Boolean).length < 2) return `Question ${n} needs at least two options.`;
+    if(q.options.some(o => !o)) return `Question ${n} has an empty option. Fill it in or remove it.`;
+  }
+  return "";
+}
+function renderQs(){
+  const e = ED, box = $("#qList"); $("#qCount").textContent = e.questions.length;
+  box.innerHTML = e.questions.map((q, i) => `<div class="qedit" data-q="${i}"><header><b>Q${i + 1}</b><span class="spacer"></span>
+      <button class="btn ghost small" data-up="${i}" ${i === 0 ? "disabled" : ""} aria-label="Move up">↑</button><button class="btn ghost small" data-down="${i}" ${i === e.questions.length - 1 ? "disabled" : ""} aria-label="Move down">↓</button>
+      <button class="btn ghost small" data-del="${i}">Remove</button></header>
+    <div class="field"><label for="qt${i}">Question</label><textarea id="qt${i}" data-f="text" rows="2">${esc(q.text)}</textarea></div>
+    <div class="field"><label>Options</label>${q.options.map((o, j) => `<div class="oprow"><span class="l">${LET[j]}</span><input type="text" data-opt="${j}" value="${esc(o)}" placeholder="Option ${LET[j]}" aria-label="Option ${LET[j]}"><button class="btn ghost small" data-rmopt="${j}" ${q.options.length <= 2 ? "disabled" : ""} aria-label="Remove option ${LET[j]}">✕</button></div>`).join("")}
+      ${q.options.length < 6 ? `<button class="btn ghost small" data-addopt="1" style="align-self:flex-start">+ Add option</button>` : ""}</div>
+    <div class="grid2"><div class="field"><label for="qc${i}">Correct answer</label><select id="qc${i}" data-f="correct"><option value="-1" ${q.correct < 0 ? "selected" : ""}>No correct answer (opinion poll)</option>${q.options.map((o, j) => `<option value="${j}" ${q.correct === j ? "selected" : ""}>${LET[j]}${o.trim() ? " · " + esc(o.trim().slice(0, 40)) : ""}</option>`).join("")}</select></div>
+      <div class="field"><label for="qs${i}">Seconds to answer</label><input type="number" id="qs${i}" data-f="seconds" min="5" max="300" value="${q.seconds}"></div></div>
+    <div class="field"><label for="qe${i}">Explanation (shown with the results, optional)</label><input type="text" id="qe${i}" data-f="explanation" value="${esc(q.explanation || "")}"></div></div>`).join("");
+  box.querySelectorAll(".qedit").forEach(card => {
+    const i = +card.dataset.q, q = e.questions[i];
+    card.querySelectorAll("[data-f]").forEach(inp => inp.addEventListener("input", () => { const f = inp.dataset.f; q[f] = f === "correct" ? parseInt(inp.value, 10) : f === "seconds" ? Math.min(300, Math.max(5, parseInt(inp.value, 10) || 20)) : inp.value; }));
+    card.querySelectorAll("[data-opt]").forEach(inp => inp.addEventListener("input", () => { q.options[+inp.dataset.opt] = inp.value; }));
+    card.querySelectorAll("[data-opt]").forEach(inp => inp.addEventListener("change", () => renderQs()));
+    card.querySelectorAll("[data-rmopt]").forEach(b => b.onclick = () => { const j = +b.dataset.rmopt; q.options.splice(j, 1); if(q.correct === j) q.correct = -1; else if(q.correct > j) q.correct--; renderQs(); });
+    const ao = card.querySelector("[data-addopt]"); if(ao) ao.onclick = () => { q.options.push(""); renderQs(); };
+    card.querySelector("[data-del]").onclick = () => { e.questions.splice(i, 1); renderQs(); };
+    card.querySelector("[data-up]").onclick = () => { [e.questions[i - 1], e.questions[i]] = [e.questions[i], e.questions[i - 1]]; renderQs(); };
+    card.querySelector("[data-down]").onclick = () => { [e.questions[i + 1], e.questions[i]] = [e.questions[i], e.questions[i + 1]]; renderQs(); };
+  });
+}
+function parseTable(text){
+  text = String(text || "").replace(/\r/g, ""); if(!text.trim()) return [];
+  const delim = text.includes("\t") ? "\t" : ",", rows = []; let row = [], cell = "", inQ = false;
+  for(let i = 0; i < text.length; i++){
+    const ch = text[i];
+    if(inQ){ if(ch === '"'){ if(text[i + 1] === '"'){ cell += '"'; i++; } else inQ = false; } else cell += ch; }
+    else if(ch === '"' && cell === "") inQ = true;
+    else if(ch === delim){ row.push(cell); cell = ""; }
+    else if(ch === "\n"){ row.push(cell); if(row.some(c => c.trim())) rows.push(row); row = []; cell = ""; }
+    else cell += ch;
+  }
+  row.push(cell); if(row.some(c => c.trim())) rows.push(row);
+  return rows;
+}
+function downloadXlsx(base, sheets){
+  if(window.XLSX){
+    const wb = XLSX.utils.book_new();
+    sheets.forEach(sh => { const ws = XLSX.utils.aoa_to_sheet([sh.header].concat(sh.rows)); ws["!cols"] = sh.header.map((h, i) => ({ wch: Math.min(60, Math.max(String(h).length + 2, ...sh.rows.slice(0, 40).map(r => String(r[i] ?? "").length + 1), 8)) })); XLSX.utils.book_append_sheet(wb, ws, String(sh.name).slice(0, 31)); });
+    XLSX.writeFile(wb, base + ".xlsx"); return;
+  }
+  const q = v => { const s = String(v ?? ""); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const sh = sheets[0], csv = [sh.header].concat(sh.rows).map(r => r.map(q).join(",")).join("\r\n");
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type:"text/csv" })); a.download = base + ".csv"; document.body.appendChild(a); a.click(); a.remove();
+  toast("The Excel library could not load, so a CSV file was downloaded.");
+}
+
+/* ---------- control room ---------- */
+const C = { code:"", s:null, sig:"", busy:false };
+async function viewControl(code){
+  if(!H.key) return needKey();
+  C.code = code.toUpperCase(); C.s = null; C.sig = "";
+  $("#view").innerHTML = `<div class="panel"><p class="muted">Loading…</p></div>`;
+  const gen = GEN;
+  { // a game that has never been run is opened for joining the first time the control room is shown
+    const first = await hostCall({ action:"adminLiveHost", game:C.code });
+    if(gen !== GEN) return;
+    if(!first.error && first.game.status === "draft"){ const o = await hostCall({ action:"adminLiveControl", game:C.code, op:"open" }); if(o.error) toast(o.error); }
+  }
+  const loop = async () => {
+    if(gen !== GEN) return;
+    const sent = Date.now();
+    const r = await hostCall({ action:"adminLiveHost", game:C.code });
+    if(gen !== GEN) return;
+    if(r.error){ if(!H.key) return needKey(); $("#view").innerHTML = `<div class="panel"><p class="err">${esc(r.error)}</p><a class="btn" href="#host">Back</a></div>`; return; }
+    syncClock(r.now, sent); C.s = r; renderControl(r);
+    POLL = setTimeout(loop, CONFIG.POLL_MS);
+  };
+  loop();
+  TICK = setInterval(tickControl, 250);
+}
+function renderControl(r){
+  const g = r.game, qs = g.questions, cur = g.qIndex, phase = r.phase, q = cur >= 0 ? qs[cur] : null;
+  const sig = [g.id, g.status, phase, cur, g.title].join("|");
+  if(sig !== C.sig){ C.sig = sig; buildControl(r); }
+  // live bits
+  $("#cPlayers").textContent = r.players;
+  if(q && r.counts){
+    const total = r.counts.reduce((a, b) => a + b, 0);
+    $("#cAnswered").textContent = r.answered + " of " + r.players + " answered";
+    document.querySelectorAll("#cOpts .opt").forEach((el, i) => { el.querySelector(".bar").style.width = (total ? Math.round(r.counts[i] / total * 100) : 0) + "%"; el.querySelector(".cnt").textContent = r.counts[i]; });
+  }
+  $("#cLb").innerHTML = r.leaderboard.length ? r.leaderboard.map((x, i) => `<li><span class="rk">${i + 1}</span><span class="nm">${esc(x.name)} <span class="muted">${esc(x.emp)}</span></span><span class="pt">${x.total}</span></li>`).join("") : `<li class="muted">Scores appear after the first scored question.</li>`;
+}
+function buildControl(r){
+  const g = r.game, qs = g.questions, cur = g.qIndex, phase = r.phase, q = cur >= 0 ? qs[cur] : null, last = cur >= qs.length - 1;
+  const btn = (id, label, cls) => `<button class="btn ${cls || ""}" id="${id}">${label}</button>`;
+  let actions = "";
+  if(phase === "lobby") actions = btn("bRelease", "Release question 1", "primary big");
+  else if(phase === "question") actions = btn("bClose", "Show results now", "primary big");
+  else if(phase === "results") actions = last ? btn("bEnd", "End game and show final leaderboard", "primary big") : btn("bRelease", `Release question ${cur + 2}`, "primary big");
+  else actions = `<span class="muted">The game has finished.</span>`;
+  $("#view").innerHTML = `<section class="row" style="justify-content:space-between"><div><div class="eyebrow"><a href="#host">Live games</a> / Control room</div><h1 style="font-size:24px">${rich(g.title)}</h1></div>
+      <div class="row"><a class="btn small" href="#host-edit-${esc(g.id)}">Edit questions</a></div></section>
+    <div class="panel"><div class="row" style="justify-content:space-between;align-items:flex-end"><div><div class="eyebrow">Game code</div><div class="code">${esc(g.id)}</div></div>
+      <div style="text-align:right"><div class="eyebrow">Joined</div><div class="code" style="font-size:44px" id="cPlayers">${r.players}</div></div></div>
+      <div class="row"><span class="mono" style="font-size:13px;word-break:break-all">${esc(joinLink(g.id))}</span><button class="btn small" id="bCopy">Copy join link</button></div>
+      <p class="muted" style="font-size:13px">Faculty open the link (or the page and type the code), enter their name and employee ID, and wait in the lobby.</p></div>
+    <div class="ctrl"><div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+      <div class="panel"><div class="row" style="justify-content:space-between"><span class="badge ${phase === "question" ? "on" : ""}">${phase === "lobby" ? "Lobby" : phase === "question" ? "Question open" : phase === "results" ? "Results shown" : "Finished"}</span>
+        <span class="eyebrow">${q ? "Question " + (cur + 1) + " of " + qs.length : qs.length + " questions"}</span></div>
+        ${q ? `<div class="timer" ${phase === "question" ? "" : "hidden"}><div class="tbar"><i id="cbar"></i></div><span class="tnum" id="cnum"></span></div>
+        <h2 style="font-size:20px">${rich(q.text)}</h2>${q.correct < 0 ? `<p class="muted">Opinion poll: no correct answer, no points.</p>` : ""}
+        <div class="opts" id="cOpts">${q.options.map((o, i) => `<div class="opt c${i} ${phase !== "question" && q.correct >= 0 && i !== q.correct ? "dim" : ""} ${phase !== "question" && q.correct === i ? "right" : ""}"><span class="bar"></span><span class="shape" aria-hidden="true">${SHAPES[i]}</span><span class="ltr">${LET[i]}</span><span class="txt">${rich(o)}</span><span class="cnt">0</span></div>`).join("")}</div>
+        <div class="muted" id="cAnswered" aria-live="polite"></div>` : `<p class="muted">Nobody sees a question yet. Release the first question when everyone has joined.</p>`}
+        <div class="row" id="cActions">${actions}${phase !== "finished" && phase !== "lobby" ? btn("bEnd2", "End game", "danger small") : ""}</div>
+        <div class="err" id="cErr"></div></div>
+      <div class="panel"><h2>Questions</h2><div class="qlist">${qs.map((x, i) => `<div class="qli ${i === cur ? "cur" : ""}"><span class="n">${i + 1}</span><span class="t">${esc(x.text)}</span>
+        <span class="badge">${x.correct < 0 ? "poll" : "scored"} · ${x.seconds}s</span>
+        ${i > cur && phase !== "finished" ? `<button class="btn small" data-rel="${i}">Release now</button>` : `<span class="muted" style="font-size:12px">${i < cur || (i === cur && phase !== "question") ? "done" : i === cur ? "live" : ""}</span>`}</div>`).join("")}</div></div></div>
+      <div style="display:flex;flex-direction:column;gap:16px;min-width:0"><div class="panel"><h2>Leaderboard</h2><ul class="lb" id="cLb"></ul></div>
+        <div class="panel"><h2>Results</h2><p class="muted" style="font-size:13px">Download scores, per-question statistics and every answer as an Excel file.</p>
+          <div class="row"><button class="btn primary" id="bExport">Download results (Excel)</button></div>
+          <hr style="border:0;border-top:1px solid var(--line);width:100%"><p class="muted" style="font-size:13px">Play again with the same questions: this clears all scores and answers.</p>
+          <div class="row"><button class="btn danger small" id="bReset">Reset game</button></div></div></div></div>`;
+  math($("#view"));
+  const ctl = async (op, extra) => {
+    if(C.busy) return; C.busy = true; $("#cErr").textContent = "";
+    const x = await hostCall(Object.assign({ action:"adminLiveControl", game:C.code, op }, extra || {}));
+    C.busy = false;
+    if(x.error){ $("#cErr").textContent = x.error; toast(x.error); return; }
+    C.sig = ""; const h = await hostCall({ action:"adminLiveHost", game:C.code }); if(!h.error){ C.s = h; renderControl(h); }
+  };
+  const on = (id, fn) => { const el = $("#" + id); if(el) el.onclick = fn; };
+  on("bRelease", () => ctl("release")); on("bClose", () => ctl("close")); on("bEnd", () => ctl("end"));
+  on("bEnd2", () => { const b = $("#bEnd2"); if(!b.dataset.armed){ b.dataset.armed = "1"; b.textContent = "Click again to end"; return; } ctl("end"); });
+  document.querySelectorAll("[data-rel]").forEach(b => b.onclick = () => ctl("release", { index:+b.dataset.rel }));
+  on("bCopy", () => copyText(joinLink(g.id)));
+  on("bReset", () => { const b = $("#bReset"); if(!b.dataset.armed){ b.dataset.armed = "1"; b.textContent = "Click again to clear scores"; return; } ctl("reset"); });
+  on("bExport", exportResults);
+}
+function tickControl(){
+  const r = C.s; if(!r || r.phase !== "question") return;
+  const q = r.game.questions[r.game.qIndex], left = Math.max(0, (r.game.endsAt - nowMs()) / 1000), bar = $("#cbar"), num = $("#cnum"); if(!bar) return;
+  bar.style.width = Math.min(100, left / q.seconds * 100) + "%"; bar.classList.toggle("low", left <= 5); num.textContent = Math.ceil(left);
+}
+async function exportResults(){
+  const b = $("#bExport"); b.disabled = true;
+  const r = await hostCall({ action:"adminLiveExport", game:C.code }); b.disabled = false;
+  if(r.error){ toast(r.error); return; }
+  const qs = r.game.questions, byEmp = {};
+  r.answers.forEach(a => { (byEmp[String(a.emp).toLowerCase()] = byEmp[String(a.emp).toLowerCase()] || {})[a.qIndex] = a; });
+  const lbHead = ["Rank", "Name", "Emp ID", "Dept", "Total points", "Correct answers", "Average time on correct answers (s)"].concat(qs.map((q, i) => "Q" + (i + 1) + " points"));
+  const lbRows = r.ranking.map((p, i) => [i + 1, p.name, p.emp, p.dept, p.total, p.correct, p.correct ? Math.round(p.ms / p.correct / 100) / 10 : ""].concat(qs.map((q, j) => { const a = (byEmp[String(p.emp).toLowerCase()] || {})[j]; return a ? a.points : (q.correct < 0 ? "" : 0); })));
+  const qHead = ["Q", "Question", "Type", "Correct option", "Answered", "Correct %"].concat(["A", "B", "C", "D", "E", "F"].map(l => "Chose " + l));
+  const qRows = qs.map((q, j) => { const as = r.answers.filter(a => a.qIndex === j), cnt = q.options.map((_, k) => as.filter(a => a.choice === k).length);
+    return [j + 1, q.text, q.correct < 0 ? "Poll" : "Scored", q.correct < 0 ? "" : LET[q.correct] + ") " + q.options[q.correct], as.length, q.correct < 0 || !as.length ? "" : Math.round(cnt[q.correct] / as.length * 1000) / 10].concat([0, 1, 2, 3, 4, 5].map(k => k < q.options.length ? cnt[k] : "")); });
+  const aHead = ["Name", "Emp ID", "Q", "Question", "Chose", "Correct?", "Time to answer (s)", "Points"];
+  const aRows = r.answers.slice().sort((x, y) => x.qIndex - y.qIndex || String(x.name).localeCompare(String(y.name))).map(a => [a.name, a.emp, a.qIndex + 1, qs[a.qIndex] ? qs[a.qIndex].text : "", LET[a.choice] || "", qs[a.qIndex] && qs[a.qIndex].correct >= 0 ? (a.choice === qs[a.qIndex].correct ? "Yes" : "No") : "Poll", Math.round(a.elapsedMs / 100) / 10, a.points]);
+  downloadXlsx("live-" + C.code + "-results", [{ name:"Leaderboard", header:lbHead, rows:lbRows }, { name:"Per question", header:qHead, rows:qRows }, { name:"All answers", header:aHead, rows:aRows }]);
+}
+
+route();
+</script>
+</body>
+</html>

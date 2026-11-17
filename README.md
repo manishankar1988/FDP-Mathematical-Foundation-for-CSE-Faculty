@@ -9,6 +9,7 @@ Sahrdaya College of Engineering and Technology (16–30 November 2026).
 | `linear-algebra/` | Linear Algebra Essentials (Phase 1, 16–17 Nov) | `.../linear-algebra/` |
 | `course/` | Full 12-day Mathematics Prerequisite Programme | `.../course/` |
 | `quiz/` | Quiz Hall: coordinator-set, full-screen quizzes | `.../quiz/` |
+| `live/` | Live Game: Kahoot-style questions released by the coordinator during a session | `.../live/` |
 | `shared/` | Code used by `course/` and `linear-algebra/` (coordinator content manager). Upload it with the site | — |
 | `apps-script/` | Google Sheets backends (not part of the website; paste into Apps Script) | — |
 
@@ -47,6 +48,15 @@ All three pages share **one** script and **one** Google Sheet: `apps-script/FDPB
    - `quiz/index.html` → `SCRIPT_URL: "<URL>"`
    - `course/index.html` and `linear-algebra/index.html` → `SHEET_URL: "<URL>"`, and change `ADMIN_PIN`.
 4. Open `.../quiz/#admin` and sign in with your `ADMIN_KEY` to create quizzes. Use the same key for *Add content for participants* in the course pages.
+
+## Live games (Kahoot-style)
+
+Open `.../live/#host`, sign in with the `ADMIN_KEY`, and click **+ New game**.
+- Add questions (type, paste, or import from the Excel template). A question with a correct answer is **scored**: 500 to 1000 points, more the faster it is answered. A question with *No correct answer* is an **opinion poll** (no points).
+- Click **Run**. The control room shows a game code and a join link. Faculty open the link (or `.../live/` and type the code), enter their name and employee ID, and wait in the lobby.
+- **Release question 1**, then each next question whenever you like, or use *Release now* on any later question to jump ahead. You see the answers arrive live as a bar chart. When the timer ends (or you click *Show results now*) faculty see the correct answer, their points and the leaderboard.
+- **End game** shows the final leaderboard. **Download results (Excel)** gives the leaderboard, per-question statistics and every answer. **Reset game** clears the scores to play again.
+- It uses the same Apps Script as the other pages; paste the latest `FDPBackend.gs` and redeploy. Devices refresh every 1.5 seconds, so it works for a room of 100 or more on ordinary phones.
 
 ## What coordinators can do from the website
 

@@ -23,7 +23,9 @@
  * AFTER EDITING THIS SCRIPT: Deploy → Manage deployments → Edit (pencil) → Version: New version → Deploy.
  * The URL stays the same.
  *
- * Tabs created automatically: Quizzes, Questions, Responses, Scores, Polls, Logins, Content.
+ *   live/             Live games    (Kahoot-style: coordinator releases questions, faculty answer on their phones)
+ *
+ * Tabs created automatically: Quizzes, Questions, Responses, Feedback, Scores, Polls, Logins, Content, LiveGames, LiveAnswers.
  */
 
 const ADMIN_KEY = "change-this-key";
@@ -40,7 +42,9 @@ const COLS = {
   Scores:    ["Time", "Name", "Emp ID", "Dept", "Courses", "Day", "Day title", "Attempt", "Score", "Total", "Percent", "Passed", "Answers"],
   Polls:     ["Time", "Name", "Emp ID", "Dept", "Poll ID", "Topic", "Option #", "Option text", "Previous option #"],
   Logins:    ["Time", "Name", "Emp ID", "Dept", "Courses"],
-  Content:   ["id", "site", "day", "topic", "type", "title", "url", "text", "extra", "published", "publishAt", "expiresAt", "created"]
+  Content:   ["id", "site", "day", "topic", "type", "title", "url", "text", "extra", "published", "publishAt", "expiresAt", "created"],
+  LiveGames: ["id", "title", "status", "phase", "qIndex", "startsAt", "endsAt", "questions", "created"],
+  LiveAnswers: ["time", "gameId", "qIndex", "emp", "name", "dept", "choice", "elapsedMs", "points"]
 };
 const LETTERS = "ABCDEF";
 
@@ -73,7 +77,7 @@ function rewrite_(name, objs) {
   const data = [cols].concat(objs.map(o => cols.map(c => o[c] === undefined || o[c] === null ? "" : o[c])));
   const range = sh.getRange(1, 1, data.length, cols.length);
   // Questions are stored as plain text. Otherwise Google Sheets turns an option such as "4, 5" or "1, 3" into a date.
-  if (name === "Questions") range.setNumberFormat("@");
+  if (name === "Questions" || name === "LiveGames") range.setNumberFormat("@");
   range.setValues(data);
   sh.getRange(1, 1, 1, cols.length).setFontWeight("bold");
 }
@@ -118,6 +122,7 @@ function doGet(e) {
         passPercent: quiz.passPercent, count: questions.length,
         opensAt: quiz.opensAt, closesAt: quiz.closesAt, day: quiz.day, speaker: quiz.speaker, feedback: quiz.feedback }, questions: questions, now: now });
     }
+    if (p.action === "liveState") return json_(liveState_(p));      // Live games: what a participant sees right now
     // --- Course / Linear Algebra ---
     if (p.action === "content") {          // published items inside their visibility window
       const now = Date.now(), site = p.site || "course";
@@ -143,12 +148,21 @@ function doGet(e) {
 function doPost(e) {
   let d;
   try { d = JSON.parse(e.postData.contents); } catch (err) { return json_({ error: "Bad request." }); }
+  const act0 = String(d.action || "");
+  if (act0 === "adminLiveHost" || act0 === "adminLiveList") {           // read-only live views for the coordinator: no lock, so they never queue behind answers
+    try {
+      const bad = adminCheck_(d); if (bad) return json_({ error: bad });
+      return json_(act0 === "adminLiveHost" ? liveHost_(d) : liveList_());
+    } catch (err) { return json_({ error: String(err) }); }
+  }
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
     const action = String(d.action || "");
     if (action === "submit") return json_(submit_(d));                       // Quiz Hall answers
     if (action === "feedback") return json_(feedback_(d));                   // Quiz Hall feedback form
+    if (action === "liveJoin") return json_(liveJoin_(d));                   // Live games: join / answer
+    if (action === "liveAnswer") return json_(liveAnswer_(d));
     if (action.indexOf("adminContent") === 0) {                               // course / LA coordinator content
       const bad = adminCheck_(d); if (bad) return json_({ error: bad });
       return json_(adminContent_(d));
@@ -158,6 +172,10 @@ function doPost(e) {
       if (action === "adminLoad") return json_(adminLoad_());
       if (action === "adminSaveQuiz") return json_(adminSave_(d.quiz));
       if (action === "adminDeleteQuiz") return json_(adminDelete_(d.id));
+      if (action === "adminLiveSave") return json_(liveSave_(d.game));
+      if (action === "adminLiveDelete") return json_(liveDelete_(d.game));
+      if (action === "adminLiveControl") return json_(liveControl_(d));
+      if (action === "adminLiveExport") return json_(liveExport_(d));
       if (action === "adminAllResponses") return json_({ quizzes: adminLoad_().quizzes, responses: rows_("Responses"), feedback: rows_("Feedback") });
       if (action === "adminResults") return json_({ rows: rows_("Responses").filter(r => String(r.quizId) === String(d.id)) });
       return json_({ error: "Unknown action." });
@@ -347,4 +365,217 @@ function adminContent_(d) {
     return { ok: true };
   }
   return { error: "Unknown action." };
+}
+
+
+/* ================= LIVE GAMES (Kahoot-style) =================
+   The coordinator releases one question at a time. Faculty answer on their own devices; a correct answer scores
+   500 to 1000 points, the faster the more. Questions without a correct answer are opinion polls (no points).
+   The live state is kept in CacheService so hundreds of devices can poll it quickly; answers are saved to the
+   LiveAnswers tab each time a question ends. Players reconnect safely: the sheet is the record. */
+const LIVE_TTL = 21600, LIVE_GRACE_MS = 1500, LIVE_MAX_POINTS = 1000;
+const LIVE_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+function cget_(k) { const v = CacheService.getScriptCache().get(k); return v ? JSON.parse(v) : null; }
+function cput_(k, o) { CacheService.getScriptCache().put(k, JSON.stringify(o), LIVE_TTL); }
+function cdel_(k) { CacheService.getScriptCache().remove(k); }
+
+function gameFromRow_(r) {
+  let qs = []; try { qs = JSON.parse(r.questions || "[]"); } catch (err) {}
+  return { id: String(r.id), title: String(r.title || ""), status: String(r.status || "draft"), phase: String(r.phase || "lobby"),
+    qIndex: num_(r.qIndex, -1), startsAt: num_(r.startsAt, 0), endsAt: num_(r.endsAt, 0), questions: qs, created: num_(r.created, 0) };
+}
+function gameToRow_(g) {
+  return { id: g.id, title: g.title, status: g.status, phase: g.phase, qIndex: g.qIndex, startsAt: g.startsAt, endsAt: g.endsAt,
+    questions: JSON.stringify(g.questions), created: g.created };
+}
+function getGame_(id) {
+  id = String(id || "").trim().toUpperCase(); if (!id) return null;
+  let g = cget_("lg:" + id); if (g) return g;
+  const r = rows_("LiveGames").find(x => String(x.id).toUpperCase() === id);
+  if (!r) return null;
+  g = gameFromRow_(r); cput_("lg:" + id, g); return g;
+}
+function putGame_(g) {
+  cput_("lg:" + g.id, g);
+  const all = rows_("LiveGames"); let found = false;
+  const out = all.map(r => { if (String(r.id) === g.id) { found = true; return gameToRow_(g); } return r; });
+  if (!found) out.push(gameToRow_(g));
+  rewrite_("LiveGames", out);
+}
+
+/* answers per question {emp: [choice, points, elapsedMs]}, totals {emp: {n, e, d, t, c, ms}}, joined {emp: name} */
+function rebuildLive_(g) {
+  const ans = {}, tot = {}, joined = {};
+  g.questions.forEach((_, i) => { ans[i] = {}; });
+  rows_("LiveAnswers").filter(r => String(r.gameId) === g.id).forEach(r => {
+    const k = String(r.emp).trim().toLowerCase(), qi = num_(r.qIndex, 0), pts = num_(r.points, 0);
+    (ans[qi] = ans[qi] || {})[k] = [num_(r.choice, -1), pts, num_(r.elapsedMs, 0)];
+    const t = tot[k] = tot[k] || { n: String(r.name), e: String(r.emp), d: String(r.dept || ""), t: 0, c: 0, ms: 0 };
+    t.t += pts; if (pts > 0) { t.c++; t.ms += num_(r.elapsedMs, 0); }
+    joined[k] = String(r.name);
+  });
+  Object.keys(ans).forEach(i => cput_("la:" + g.id + ":" + i, ans[i]));
+  cput_("lt:" + g.id, tot); cput_("lj:" + g.id, joined);
+  cput_("lx:" + g.id, Object.keys(ans).filter(i => Object.keys(ans[i]).length).map(Number));   // questions already saved in the sheet
+}
+function ansOf_(g, qi) { let a = cget_("la:" + g.id + ":" + qi); if (a) return a; rebuildLive_(g); return cget_("la:" + g.id + ":" + qi) || {}; }
+function totOf_(g) { let t = cget_("lt:" + g.id); if (t) return t; rebuildLive_(g); return cget_("lt:" + g.id) || {}; }
+function joinedOf_(g) { let j = cget_("lj:" + g.id); if (j) return j; rebuildLive_(g); return cget_("lj:" + g.id) || {}; }
+function ranking_(tot) {
+  return Object.keys(tot).map(k => ({ k: k, n: tot[k].n, e: tot[k].e, d: tot[k].d, t: tot[k].t, c: tot[k].c, ms: tot[k].ms }))
+    .sort((a, b) => b.t - a.t || a.ms - b.ms || String(a.n).localeCompare(String(b.n)));
+}
+/* results appear only after the answer grace period, so nobody can see the right answer while an answer is still accepted */
+function effPhase_(g, now) { return g.phase === "question" && now >= g.endsAt + LIVE_GRACE_MS ? "results" : g.phase; }
+function counts_(g, qi) {
+  const q = g.questions[qi], c = q.options.map(() => 0), a = ansOf_(g, qi);
+  Object.keys(a).forEach(k => { const ch = a[k][0]; if (ch >= 0 && ch < c.length) c[ch]++; });
+  return c;
+}
+/* write the answers of a finished question to the LiveAnswers tab (once) */
+function flushQ_(g, qi) {
+  if (qi === undefined || qi < 0 || qi >= g.questions.length) return;
+  const done = cget_("lx:" + g.id) || [];
+  if (done.indexOf(qi) >= 0) return;
+  const a = ansOf_(g, qi), tot = totOf_(g), keys = Object.keys(a);
+  if (keys.length) {
+    const rows = keys.map(k => [new Date(), g.id, qi, (tot[k] || {}).e || k, (tot[k] || {}).n || "", (tot[k] || {}).d || "", a[k][0], a[k][2], a[k][1]]);
+    const sh = sheet_("LiveAnswers");
+    sh.getRange(sh.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
+  }
+  done.push(qi); cput_("lx:" + g.id, done);
+}
+
+/* ---- participants ---- */
+function liveState_(p) {
+  const g = getGame_(p.game);
+  if (!g || g.status === "draft") return { error: "No game found with that code. Check the code with your coordinator." };
+  const now = Date.now(), phase = effPhase_(g, now), key = String(p.emp || "").trim().toLowerCase();
+  const out = { now: now, title: g.title, status: g.status, phase: phase, qIndex: g.qIndex, total: g.questions.length };
+  if (phase === "question" || phase === "results") {
+    const q = g.questions[g.qIndex];
+    out.question = { text: q.text, options: q.options, seconds: q.seconds, poll: q.correct < 0, startsAt: g.startsAt, endsAt: g.endsAt };
+    const mine = key ? ansOf_(g, g.qIndex)[key] : null;
+    out.me = mine ? { choice: mine[0], points: mine[1], ms: mine[2] } : null;
+    if (phase === "results") { out.question.correct = q.correct; out.explanation = q.explanation || ""; out.counts = counts_(g, g.qIndex); }
+  }
+  const tot = totOf_(g), rank = ranking_(tot);
+  if (key && tot[key]) { out.myTotal = tot[key].t; out.myCorrect = tot[key].c; out.myRank = rank.findIndex(x => x.k === key) + 1; }
+  out.players = Object.keys(joinedOf_(g)).length;
+  if (phase === "results" || phase === "finished") out.leaderboard = rank.slice(0, phase === "finished" ? 10 : 5).map(x => ({ name: x.n, total: x.t }));
+  return out;
+}
+function liveJoin_(d) {
+  const g = getGame_(d.game);
+  if (!g || g.status === "draft") return { error: "No game found with that code. Check the code with your coordinator." };
+  const name = String(d.name || "").trim(), emp = String(d.emp || "").trim();
+  if (!name || !emp) return { error: "Name and employee ID are required." };
+  const j = joinedOf_(g); j[emp.toLowerCase()] = name; cput_("lj:" + g.id, j);
+  return { ok: true, title: g.title };
+}
+function liveAnswer_(d) {
+  const g = getGame_(d.game);
+  if (!g || g.status === "draft") return { error: "No game found with that code." };
+  const name = String(d.name || "").trim(), emp = String(d.emp || "").trim();
+  if (!name || !emp) return { error: "Name and employee ID are required." };
+  const now = Date.now();
+  if (g.phase !== "question") return { error: "No question is open right now." };
+  if (now > g.endsAt + LIVE_GRACE_MS) return { error: "Time is up for this question." };
+  const q = g.questions[g.qIndex], choice = Math.floor(Number(d.choice));
+  if (!(choice >= 0 && choice < q.options.length)) return { error: "Choose one of the options." };
+  const key = emp.toLowerCase(), a = ansOf_(g, g.qIndex);
+  if (a[key]) return { ok: true, already: true };
+  const elapsed = Math.max(0, now - g.startsAt), span = q.seconds * 1000;
+  const points = q.correct >= 0 && choice === q.correct ? Math.round(LIVE_MAX_POINTS * (1 - Math.min(1, elapsed / span) / 2)) : 0;
+  a[key] = [choice, points, elapsed]; cput_("la:" + g.id + ":" + g.qIndex, a);
+  const tot = totOf_(g), t = tot[key] = tot[key] || { n: name, e: emp, d: String(d.dept || ""), t: 0, c: 0, ms: 0 };
+  t.n = name; t.t += points; if (points > 0) { t.c++; t.ms += elapsed; }
+  cput_("lt:" + g.id, tot);
+  const j = joinedOf_(g); j[key] = name; cput_("lj:" + g.id, j);
+  return { ok: true, locked: true };
+}
+
+/* ---- coordinator ---- */
+function liveList_() {
+  return { games: rows_("LiveGames").map(gameFromRow_).sort((a, b) => b.created - a.created)
+    .map(g => ({ id: g.id, title: g.title, status: g.status, phase: g.phase, qIndex: g.qIndex, count: g.questions.length, created: g.created })) };
+}
+function liveHost_(d) {
+  const g = getGame_(d.game);
+  if (!g) return { error: "Game not found." };
+  const now = Date.now(), phase = effPhase_(g, now), tot = totOf_(g), rank = ranking_(tot);
+  const out = { now: now, game: g, phase: phase, players: Object.keys(joinedOf_(g)).length, leaderboard: rank.slice(0, 10).map(x => ({ name: x.n, emp: x.e, total: x.t, correct: x.c })) };
+  if (g.qIndex >= 0 && g.qIndex < g.questions.length) {
+    out.counts = counts_(g, g.qIndex);
+    out.answered = out.counts.reduce((a, b) => a + b, 0);
+  }
+  return out;
+}
+function liveSave_(game) {
+  if (!game || !String(game.title || "").trim()) return { error: "Give the game a title." };
+  const qs = (game.questions || []).map((q, i) => {
+    const options = (q.options || []).map(o => String(o).trim()).filter(Boolean).slice(0, 6);
+    return { text: String(q.text || "").trim().slice(0, 600), options: options, correct: Math.floor(Number(q.correct)),
+      seconds: Math.min(300, Math.max(5, Math.floor(Number(q.seconds)) || 20)), explanation: String(q.explanation || "").trim().slice(0, 400) };
+  });
+  if (!qs.length) return { error: "Add at least one question." };
+  for (let i = 0; i < qs.length; i++) {
+    const q = qs[i], n = i + 1;
+    if (!q.text) return { error: "Question " + n + " has no text." };
+    if (q.options.length < 2) return { error: "Question " + n + " needs at least two options." };
+    if (!(q.correct >= -1 && q.correct < q.options.length)) q.correct = -1;
+  }
+  let g = game.id ? getGame_(game.id) : null;
+  if (g && (g.phase === "question" || g.status === "running")) return { error: "This game is running. Finish it or reset it before editing the questions." };
+  if (!g) {
+    let id = "", taken = rows_("LiveGames").map(r => String(r.id));
+    do { id = ""; for (let i = 0; i < 5; i++) id += LIVE_CODE_CHARS.charAt(Math.floor(Math.random() * LIVE_CODE_CHARS.length)); } while (taken.indexOf(id) >= 0);
+    g = { id: id, status: "draft", phase: "lobby", qIndex: -1, startsAt: 0, endsAt: 0, created: Date.now() };
+  }
+  g.title = String(game.title).trim().slice(0, 120); g.questions = qs;
+  putGame_(g);
+  return { ok: true, id: g.id };
+}
+function liveDelete_(id) {
+  id = String(id || "").trim().toUpperCase();
+  rewrite_("LiveGames", rows_("LiveGames").filter(r => String(r.id).toUpperCase() !== id));
+  ["lg:" + id, "lt:" + id, "lj:" + id, "lx:" + id].forEach(cdel_);
+  return { ok: true };
+}
+function liveControl_(d) {
+  const g = getGame_(d.game);
+  if (!g) return { error: "Game not found." };
+  const now = Date.now(), op = String(d.op || "");
+  if (op === "open") {
+    if (!g.questions.length) return { error: "Add questions first." };
+    g.status = "lobby"; g.phase = "lobby"; g.qIndex = -1; g.startsAt = 0; g.endsAt = 0;
+  } else if (op === "release") {
+    if (g.status === "draft") { g.status = "lobby"; }
+    if (g.status === "finished") return { error: "This game has finished. Reset it to play again." };
+    flushQ_(g, g.qIndex);
+    const idx = d.index !== undefined && d.index !== null ? Math.floor(Number(d.index)) : g.qIndex + 1;
+    if (!(idx > g.qIndex && idx < g.questions.length)) return { error: "There are no more questions. End the game to show the final leaderboard." };
+    const q = g.questions[idx];
+    g.qIndex = idx; g.phase = "question"; g.status = "running"; g.startsAt = now; g.endsAt = now + q.seconds * 1000;
+  } else if (op === "close") {
+    if (g.phase === "question") { g.phase = "results"; g.endsAt = Math.min(g.endsAt, now); }
+    flushQ_(g, g.qIndex);
+  } else if (op === "end") {
+    flushQ_(g, g.qIndex); g.phase = "finished"; g.status = "finished";
+  } else if (op === "reset") {
+    rewrite_("LiveAnswers", rows_("LiveAnswers").filter(r => String(r.gameId) !== g.id));
+    ["lt:" + g.id, "lj:" + g.id, "lx:" + g.id].concat(g.questions.map((_, i) => "la:" + g.id + ":" + i)).forEach(cdel_);
+    g.status = "lobby"; g.phase = "lobby"; g.qIndex = -1; g.startsAt = 0; g.endsAt = 0;
+  } else return { error: "Unknown action." };
+  putGame_(g);
+  return { ok: true };
+}
+function liveExport_(d) {
+  const g = getGame_(d.game);
+  if (!g) return { error: "Game not found." };
+  if (effPhase_(g, Date.now()) !== "question") flushQ_(g, g.qIndex);
+  const tot = totOf_(g);
+  return { game: { id: g.id, title: g.title, questions: g.questions.map(q => ({ text: q.text, options: q.options, correct: q.correct, seconds: q.seconds })) },
+    ranking: ranking_(tot).map(x => ({ name: x.n, emp: x.e, dept: x.d, total: x.t, correct: x.c, ms: x.ms })),
+    answers: rows_("LiveAnswers").filter(r => String(r.gameId) === g.id).map(r => ({ qIndex: num_(r.qIndex, 0), emp: String(r.emp), name: String(r.name), choice: num_(r.choice, -1), elapsedMs: num_(r.elapsedMs, 0), points: num_(r.points, 0) })) };
 }
